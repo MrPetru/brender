@@ -1,0 +1,7 @@
+class WorkerConfig(object):
+	"""
+	Configuration file for brender Dashboard server
+	"""
+	
+	DEBUG = True
+	BRENDER_SERVER = 'http://localhost:9999'

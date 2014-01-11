@@ -16,14 +16,14 @@ from flask import (flash,
                    url_for,
                    make_response)
 
-BRENDER_SERVER = 'localhost:9999'
+# instance_relative_config is used later to load configuration from path relative to this file
+app = Flask(__name__, instance_relative_config=True)
 
-app = Flask(__name__)
-app.config.update(
-    DEBUG=True,
-    SERVER_NAME='localhost:8888'
-)
+# loading external configuration
+app.config.from_object('config.DashboardConfig')
 
+# maintaining this to not break existing code
+BRENDER_SERVER = app.config['BRENDER_SERVER']
 
 def http_request(ip_address, method, post_params=False):
     # post_params must be a dictionnary

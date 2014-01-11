@@ -1,0 +1,7 @@
+class ServerConfig(object):
+	"""
+	Configuration file for brender Dashboard server
+	"""
+	
+	DEBUG = True
+	SERVER_NAME='localhost:9999'

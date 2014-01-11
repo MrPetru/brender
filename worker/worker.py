@@ -13,7 +13,15 @@ from threading import Thread
 from flask import Flask, redirect, url_for, request, jsonify
 from uuid import getnode as get_mac_address
 
-BRENDER_SERVER = 'http://localhost:9999'
+# instance_relative_config is used later to load configuration from path relative to this file
+app = Flask(__name__, instance_relative_config=True)
+
+# loading external configuration
+app.config.from_object('config.WorkerConfig')
+
+# maintaining this to not break existing code
+BRENDER_SERVER = app.config['BRENDER_SERVER']
+
 MAC_ADDRESS = get_mac_address()  # the MAC address of the worker
 HOSTNAME = socket.gethostname()  # the hostname of the worker
 SYSTEM = platform.system() + ' ' + platform.release()
@@ -22,14 +30,6 @@ if (len(sys.argv) > 1):
     PORT = sys.argv[1]
 else:
     PORT = 5000
-
-# we initialize the app
-app = Flask(__name__)
-app.config.update(
-    DEBUG=True
-    #SERVER_NAME = 'brender-worker:' + str(PORT)
-    )
-
 
 def http_request(command, values):
     params = urllib.urlencode(values)

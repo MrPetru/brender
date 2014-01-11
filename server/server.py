@@ -10,12 +10,11 @@ from modules.shows import shows_module
 from modules.settings import settings_module
 from modules.stats import stats_module
 
-app = Flask(__name__)
-app.config.update(
-    DEBUG=True,
-    SERVER_NAME='localhost:9999'
-)
+# instance_relative_config is used later to load configuration from path relative to this file
+app = Flask(__name__, instance_relative_config=True)
 
+# loading external configuration
+app.config.from_object('config.ServerConfig')
 
 @app.route('/')
 def index():
