@@ -13,7 +13,7 @@ from threading import Thread
 from flask import Flask, redirect, url_for, request, jsonify
 from uuid import getnode as get_mac_address
 
-BRENDER_SERVER = 'http://brender-server:9999'
+BRENDER_SERVER = 'http://localhost:9999'
 MAC_ADDRESS = get_mac_address()  # the MAC address of the worker
 HOSTNAME = socket.gethostname()  # the hostname of the worker
 SYSTEM = platform.system() + ' ' + platform.release()

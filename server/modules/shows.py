@@ -44,10 +44,14 @@ def get_show(show_id):
 
 @shows_module.route('/shows/add', methods=['POST'])
 def show_add():
-    paths = request.form['paths']
+    path_linux = request.form['path_linux']
+    path_osx = request.form['path_osx']
+    path_server = request.form['path_server']
     show = Shows.create(
         name=request.form['name'],
-        paths='paths')
+        path_server=path_server,
+        path_linux=path_linux,
+        path_osx=path_osx)
 
     return 'done'
 

@@ -13,7 +13,7 @@ from modules.stats import stats_module
 app = Flask(__name__)
 app.config.update(
     DEBUG=True,
-    SERVER_NAME='brender-server:9999'
+    SERVER_NAME='localhost:9999'
 )
 
 
@@ -88,4 +88,4 @@ if __name__ == "__main__":
     app.register_blueprint(shows_module)
     app.register_blueprint(settings_module)
     app.register_blueprint(stats_module)
-    app.run(host='0.0.0.0')
+    app.run(host='localhost')

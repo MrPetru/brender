@@ -65,3 +65,24 @@ def render_settings():
         settings_files=onlyfiles)
 
     return jsonify(settings_files)
+
+@settings_module.route('/render-settings/<sname>', methods=['GET', 'POST'])
+def render_settings_edit(sname):
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    render_settings_path = os.path.join(path, 'render_settings/', sname)
+    if not os.path.exists(render_settings_path):
+        return jsonify(dict(text="file were not fonud"))
+    if not os.path.isfile(render_settings_path):
+        return jsonify(dict(text="file were not fonud"))
+
+    if request.method == 'GET':
+        f = open(render_settings_path, 'r')
+        text = f.read()
+        f.close()
+        return jsonify(dict(text=text))
+    elif request.method == 'POST':
+        content = request.form['content']
+        f = open(render_settings_path, 'w')
+        f.write(content)
+        f.close()
+        return 'done'

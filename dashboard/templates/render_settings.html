@@ -10,9 +10,48 @@
     <!-- Nav tabs -->
     <ul class="nav nav-tabs">
       {% for file in render_settings['settings_files'] %}
-        <li><a href="#{{file}}" data-toggle="tab">{{file}}</a></li>
+        <li><a href="#{{file}}" data-toggle="tab" onclick="get_setting_content('{{file}}')">{{file}}</a></li>
       {% endfor %}
     </ul>
+
+    <style type="text/css" media="screen">
+	    #editor { 
+	        height: 25em;
+	        width: 100%;
+	        /*left: -39px;*/
+	        overflow: auto;
+	    }
+	</style>
+
+    <div id="editor">
+    	no content were loaded
+	</div>
+
+	<br>
+	<button class="btn btn-default pull-right" onclick="save_config_file()">Save current file</button>
+
+	<script>
+	    var editor = ace.edit("editor");
+	    var current_file_name = '';
+	    editor.setTheme("ace/theme/textmate");
+	    editor.getSession().setMode("ace/mode/python");
+	    editor.gotoLine(editor.session.getLength());
+
+	    function get_setting_content(file_name) {
+	    	current_file_name = file_name;
+	    	$.get("/render-settings/" + file_name, function(data) {
+	    		editor.setValue(data);
+	    		editor.gotoLine(editor.session.getLength());
+	    	});
+	    };
+
+	    function save_config_file() {
+    		var content = editor.getValue();
+	    	$.post("/render-settings/" + current_file_name, {content:content}, function(data) {
+	    		alert(data);
+	    	});
+	    }
+	</script>
 
     
 {% endblock %}

@@ -16,12 +16,12 @@ from flask import (flash,
                    url_for,
                    make_response)
 
-BRENDER_SERVER = 'brender-server:9999'
+BRENDER_SERVER = 'localhost:9999'
 
 app = Flask(__name__)
 app.config.update(
     DEBUG=True,
-    SERVER_NAME='brender-flask:8888'
+    SERVER_NAME='localhost:8888'
 )
 
 
@@ -169,6 +169,34 @@ def shows_update():
     shows = json.loads(shows)
     return render_template('shows.html', shows=shows, title='shows')
 
+@app.route('/shows/add', methods=['GET', 'POST'])
+def shows_add():
+    """
+        Create a new show entry in database
+    """
+
+    if request.method == 'POST':
+        # create show
+        params = dict(
+            #show_id=request.form['show_id'],
+            name=request.form['name'],
+            path_server=request.form['path_server'],
+            path_linux=request.form['path_linux'],
+            path_osx=request.form['path_osx'])
+
+        print http_request(BRENDER_SERVER, '/shows/add', params)
+
+        return redirect(url_for('shows_index'))
+
+    elif request.method == 'GET':
+        # render form template
+        return render_template('show_add.html', title='shows')
+
+    else:
+        # there is unknown method in the request
+        return "[error] request method not known"
+
+
 
 @app.route('/shots/')
 def shots_index():
@@ -315,6 +343,15 @@ def render_settings():
                            title='render settings',
                            render_settings=render_settings)
 
+@app.route('/render-settings/<sname>', methods=['GET', 'POST'])
+def render_settings_edit(sname):
+    if request.method == 'GET':
+        result = json.loads(http_request(BRENDER_SERVER, '/render-settings/' + sname))
+        return result['text']
+    elif request.method == 'POST':
+        content = request.form
+        http_request(BRENDER_SERVER, '/render-settings/' + sname, content)
+        return 'done'
 
 @app.route('/status/', methods=['GET'])
 def status():

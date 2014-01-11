@@ -70,7 +70,11 @@
 <script>
   $(document).ready(function() {
 
-    $('#brenderModalLabel').text('Add shot for {{shows[settings['active_show']]['name']}}');
+    {% if settings['active_show'] %}
+      $('#brenderModalLabel').text('Add shot for {{shows[settings["active_show"]]["name"]}}');
+    {% else %}
+      $('#brenderModalLabel').html('<h3>You have no an active show in the configuration.<br>Please select/create one!</h3>');
+    {% endif %}
 
     $('#filepath').val($('#modal_variable').val());
 

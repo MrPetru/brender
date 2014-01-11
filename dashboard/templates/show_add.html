@@ -1,0 +1,54 @@
+<form id="addShow" role="form" action="{{ url_for('shows_add') }}" method=post>
+
+  <!-- <div class="row">
+    <div class="col-md-12">
+      <div class="form-group">
+        <label for="project">Show</label>
+        <div class="input-group">
+          <input id="filepath" name="filepath" type="text" class="form-control">
+          <div class="input-group-btn">
+            <a id="browse_filepath" type="button" class="btn btn-default">Browse</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> -->
+
+  <div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+          <label for="shot_name">Show name</label>
+          <input type="text" class="form-control" id="show_name" name="name" placeholder="a2s31" required="">
+        </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
+        <div class="form-group">
+          <label for="frame_start">Path server</label>
+          <input type="text" class="form-control" id="show_path_server" name="path_server" required="">
+        </div>
+    </div>
+    <div class="col-md-12">
+        <div class="form-group">
+          <label for="frame_end">Path linux</label>
+          <input type="text" class="form-control" id="show_path_linux" name="path_linux" required="">
+        </div>
+    </div>
+    <div class="col-md-12">
+        <div class="form-group">
+          <label for="show_osx_path">Path OSX</label>
+          <input type="text" class="form-control" id="show_path_osx" name="path_osx" required="">
+        </div>
+    </div>
+  </div>       
+
+</form>
+
+<script>
+  $(document).ready(function() {
+
+  });
+
+</script>
