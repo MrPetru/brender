@@ -9,3 +9,6 @@
 venv/
 *.log
 .ropeproject/*
+dashboard/config.py
+server/config.py
+worker/config.py
