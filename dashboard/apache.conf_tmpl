@@ -1,0 +1,20 @@
+<VirtualHost *:80>
+        #ServerName brender-dashboard
+        WSGIDaemonProcess dashboard  user=user_name group=group_name threads=5
+        WSGIScriptAlias / /path/to/dashboard/dashboard.wsgi
+        <Directory /path/to/dashboard>
+                WSGIProcessGroup dashboard
+                WSGIApplicationGroup %{GLOBAL}
+                Order deny,allow
+                Allow from all
+        </Directory>
+
+        ErrorLog ${APACHE_LOG_DIR}/brender-dashboard-error.log
+
+        # Possible values include: debug, info, notice, warn, error, crit,
+        # alert, emerg.
+        LogLevel warn
+
+        CustomLog ${APACHE_LOG_DIR}/brender-dashboard-access.log combined
+
+</VirtualHost>

@@ -1,0 +1,4 @@
+import sys
+#this is path to forlder containing dashboar source code
+sys.path.insert(0, '/path/to/dashboard')
+from dashboard import app as application

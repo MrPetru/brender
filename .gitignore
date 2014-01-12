@@ -12,3 +12,4 @@ venv/
 dashboard/config.py
 server/config.py
 worker/config.py
+dashboard/dashboard.wsgi
