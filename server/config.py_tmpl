@@ -5,3 +5,4 @@ class ServerConfig(object):
 	
 	DEBUG = True
 	SERVER_NAME='localhost:9999'
+	HOST='localhost'

@@ -87,4 +87,4 @@ if __name__ == "__main__":
     app.register_blueprint(shows_module)
     app.register_blueprint(settings_module)
     app.register_blueprint(stats_module)
-    app.run(host='localhost')
+    app.run(host=app.config['HOST'])
