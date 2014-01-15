@@ -94,7 +94,11 @@ def start_job(worker, job):
             Settings.name == 'blender_path_linux')
         setting_render_settings = Settings.get(
             Settings.name == 'render_settings_path_linux')
-        filepath = os.path.join(show.path_linux, shot.filepath)
+
+        shared_snapshot_path = os.path.join(show.path_linux, shot.snapshot_id)
+        local_snapshot_path = os.path.join(show.path_linux_snapshots, shot.snapshot_id)
+
+        filepath = os.path.join(local_snapshot_path, shot.filepath)
 
     blender_path = setting_blender_path.value
     render_settings = os.path.join(
@@ -113,12 +117,16 @@ def start_job(worker, job):
                       'post-run': 'clear variables, empty /tmp'}
     """
 
+    copy_snapshot_command = "rsync -au %s/ %s/" % (shared_snapshot_path, local_snapshot_path)
+    print(copy_snapshot_command)
+
     params = {'job_id': job.id,
               'file_path': filepath,
               'blender_path': blender_path,
               'render_settings': render_settings,
               'start': job.chunk_start,
-              'end': job.chunk_end}
+              'end': job.chunk_end,
+              'copy_snapshot_command':copy_snapshot_command}
 
     http_request(worker_ip_address, '/execute_job', params)
     #  get a reply from the worker (running, error, etc)
@@ -221,12 +229,25 @@ def jobs():
 def jobs_update():
     job_id = request.form['id']
     status = request.form['status'].lower()
+
+    job = Jobs.get(Jobs.id == job_id)
+    shot = Shots.get(Shots.id == job.shot_id)
+
+    full_output = request.form['full_output']
+    retcode = request.form['retcode']
+    source_worker = request.remote_addr
+    with open('log_%s_%s.log' % (shot.shot_name, source_worker), 'a') as f:
+        f.write("="*80+'\n')
+        f.write("worker ip is %s\n" % source_worker)
+        f.write("-"*80+'\n')
+        f.write("return code is %s\n" % retcode)
+        f.write("following complete log\n")
+        f.write(full_output)
+        f.close()
+
     if status in ['finished']:
-        job = Jobs.get(Jobs.id == job_id)
-        shot = Shots.get(Shots.id == job.shot_id)
         job.status = 'finished'
         job.save()
-
         if job.chunk_end == shot.frame_end:
             shot.status = 'completed'
             # this can be added when we update the shot for every
@@ -234,6 +255,12 @@ def jobs_update():
             # if job.current_frame == shot.frame_end:
             #     shot.status = 'finished'
             shot.save()
+    elif status in ['error']:
+        shot.status = 'error'
+        shot.save()
+        delete_jobs(job.shot_id)
+    else:
+        print('receiveed status is %s' % status)
 
     dispatch_jobs()
 

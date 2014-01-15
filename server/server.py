@@ -24,7 +24,7 @@ def index():
 
 @app.route('/connect', methods=['POST', 'GET'])
 def connect():
-    error = None
+    error = ''
     if request.method == 'POST':
         #return str(request.json['foo'])
 

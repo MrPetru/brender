@@ -41,6 +41,9 @@ class Shows(BaseModel):
     path_server = TextField()
     path_linux = TextField()
     path_osx = TextField()
+    path_server_snapshots = TextField()
+    path_linux_snapshots = TextField()
+    path_osx_snapshots = TextField()
 
 
 class Shots(BaseModel):
@@ -63,6 +66,7 @@ class Shots(BaseModel):
     status = CharField()  # started and waiting / stopped / running / paused
     priority = IntegerField()
     owner = CharField()  # will eventually become a foreign field
+    snapshot_id = CharField()
 
 
 class Jobs(BaseModel):

@@ -8,6 +8,10 @@ from model import *
 from jobs import *
 from utils import *
 
+import subprocess
+import time
+import shutil
+
 shots_module = Blueprint('shots_module', __name__)
 
 
@@ -25,11 +29,23 @@ def delete_shot(shot_id):
 def shots():
     shots = {}
     for shot in Shots.select():
-        percentage_done = 0
-        frame_count = shot.frame_end - shot.frame_start + 1
-        current_frame = shot.current_frame - shot.frame_start + 1
-        percentage_done = float(current_frame) / float(frame_count) * float(100)
-        percentage_done = round(percentage_done, 1)
+        # percentage_done = 0
+        # frame_count = shot.frame_end - shot.frame_start + 1
+        # current_frame = shot.current_frame - shot.frame_start + 1
+        # percentage_done = float(current_frame) / float(frame_count) * float(100)
+        # percentage_done = round(percentage_done, 1)
+
+        # get count of completed jobs and not
+        finished = 0
+        total = 0
+        for j in Jobs.select().where(Jobs.shot_id == shot.id):
+            total+=1
+            if j.status == 'finished':
+                finished+=1
+        if finished > 0:
+            percentage_done = round((float(finished)  / float(total)) * 100.0, 1)
+        else:
+            percentage_done = 0
 
         if percentage_done == 100:
             shot.status = 'completed'
@@ -44,15 +60,17 @@ def shots():
     return jsonify(shots)
 
 
-@shots_module.route('/shots/browse/', defaults={'path': ''})
-@shots_module.route('/shots/browse/<path:path>',)
+@shots_module.route('/shots/browse/', defaults={'path': ''}, methods=['GET', 'POST'])
+@shots_module.route('/shots/browse/<path:path>', methods=['GET', 'POST'])
 def shots_browse(path):
     """We browse the production folder on the server.
     The path value gets appended to the active_show path value. The result is returned
     in JSON format.
     """
-    active_show = Settings.get(Settings.name == 'active_show')
-    active_show = Shows.get(Shows.id == active_show.value)
+
+    show_id = request.form['show_id']
+    #active_show = Settings.get(Settings.name == 'active_show')
+    active_show = Shows.get(Shows.id == show_id)
 
     # path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # render_settings_path = os.path.join(path, 'render_settings/')
@@ -113,11 +131,24 @@ def shots_start():
             print('[error] Shot not found')
             return 'Shot %d not found' % shot_id
 
-        if shot.status != 'running':
+        if shot.status == 'running':
+            pass
+        elif shot.status in ['error', 'completed']:
+            delete_jobs(shot.id)
+            create_jobs(shot)
             shot.status = 'running'
             shot.save()
-            print ('[debug] Dispatching jobs')
             dispatch_jobs()
+        elif shot.status in ['stopped', 'ready']:
+            shot.status = 'running'
+            shot.save()
+            dispatch_jobs()
+
+        # if shot.status != 'running':
+        #     shot.status = 'running'
+        #     shot.save()
+        #     print ('[debug] Dispatching jobs')
+        #     dispatch_jobs()
 
     return jsonify(
         shot_ids=shot_ids,
@@ -137,7 +168,7 @@ def shots_stop():
             print('[error] Shot not found')
             return 'Shot %d not found' % shot_id
 
-        if shot.status != 'stopped':
+        if not shot.status in ['stopped', 'error']:
             stop_jobs(shot.id)
             shot.status = 'stopped'
             shot.save()
@@ -173,10 +204,14 @@ def shots_reset():
         shot_ids=shots_list,
         status='ready')
 
+def create_snapshot():
+    pass
 
 @shots_module.route('/shots/add', methods=['POST'])
 def shot_add():
     print('adding shot')
+
+    snapshot_id = "%d" % round(time.time() * 1000000)
 
     shot = Shots.create(
         attract_shot_id=1,
@@ -188,9 +223,33 @@ def shot_add():
         filepath=request.form['filepath'],
         shot_name=request.form['shot_name'],
         render_settings=request.form['render_settings'],
-        status='running',
+        status='ready',
         priority=10,
-        owner='fsiddi')
+        owner='fsiddi',
+        snapshot_id='')
+
+    # create a snapshot of files for this shot
+    # server_side_path
+    #active_show_name = Settings.get(Settings.name == 'active_show').value
+    show = Shows.get(Shows.id == shot.show_id)
+    snapshots_path = show.path_server_snapshots
+
+    if snapshots_path:
+        shot.snapshot_id = snapshot_id
+        shot.save()
+
+        prj_src_path = show.path_server
+        prj_snapshot = os.path.join(snapshots_path, shot.snapshot_id)
+
+        sync_command = "rsync -au %s/ %s/" % (prj_src_path, prj_snapshot)
+
+        # register_thread = Thread(target=create_snapshot)
+        # register_thread.setDaemon(True)
+        # register_thread.start()
+        process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        process.wait()
+        print('return code from sync is %d' % process.returncode)
 
     print('parsing shot to create jobs')
 
@@ -198,9 +257,21 @@ def shot_add():
 
     print('refresh list of available workers')
 
-    dispatch_jobs(shot.id)
+    #dispatch_jobs(shot.id)
 
     return 'done'
+
+def server_delete_snapshot(shot):
+    #active_show_name = Settings.get(Settings.name == 'active_show').value
+    show = Shows.get(Shows.id == shot.show_id)
+    prj_snapshot = os.path.join(show.path_server_snapshots, shot.snapshot_id)
+    if os.path.exists(prj_snapshot):
+        shutil.rmtree(prj_snapshot)
+    pass
+def linux_delete_snapshot(shot):
+    pass
+def osx_delete_snapshot(shot):
+    pass
 
 
 @shots_module.route('/shots/delete', methods=['POST'])
@@ -208,6 +279,12 @@ def shots_delete():
     shot_ids = request.form['id']
     shots_list = list_integers_string(shot_ids)
     for shot_id in shots_list:
+        shot = Shots.get(Shots.id == shot_id)
+        if shot.snapshot_id:
+            server_delete_snapshot(shot)
+            linux_delete_snapshot(shot)
+            osx_delete_snapshot(shot)
+
         print('working on', shot_id, '-', str(type(shot_id)))
         # first we delete the associated jobs (no foreign keys)
         delete_jobs(shot_id)

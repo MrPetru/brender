@@ -18,10 +18,14 @@ def shows():
     shows = {}
     for show in Shows.select():
         shows[show.id] = dict(
+            id=show.id,
             name=show.name,
             path_server=show.path_server,
             path_linux=show.path_linux,
-            path_osx=show.path_osx)
+            path_osx=show.path_osx,
+            path_server_snapshots=show.path_server_snapshots,
+            path_linux_snapshots=show.path_linux_snapshots,
+            path_osx_snapshots=show.path_osx_snapshots)
     
     return jsonify(shows)
 
@@ -39,7 +43,10 @@ def get_show(show_id):
         name=show.name,
         path_server=show.path_server,
         path_linux=show.path_linux,
-        path_osx=show.path_osx)
+        path_osx=show.path_osx,
+        path_server_snapshots=show.path_server_snapshots,
+        path_linux_snapshots=show.path_linux_snapshots,
+        path_osx_snapshots=show.path_osx_snapshots)
 
 
 @shows_module.route('/shows/add', methods=['POST'])
@@ -47,11 +54,19 @@ def show_add():
     path_linux = request.form['path_linux']
     path_osx = request.form['path_osx']
     path_server = request.form['path_server']
+
+    path_linux_snapshots = request.form['path_linux_snapshots']
+    path_osx_snapshots = request.form['path_osx_snapshots']
+    path_server_snapshots = request.form['path_server_snapshots']
+
     show = Shows.create(
         name=request.form['name'],
         path_server=path_server,
         path_linux=path_linux,
-        path_osx=path_osx)
+        path_osx=path_osx,
+        path_server_snapshots=path_server_snapshots,
+        path_linux_snapshots=path_linux_snapshots,
+        path_osx_snapshots=path_osx_snapshots)
 
     return 'done'
 
@@ -68,6 +83,11 @@ def shows_update():
     show.path_server=request.form['path_server']
     show.path_linux=request.form['path_linux']
     show.path_osx=request.form['path_osx']
+
+    show.path_server_snapshots=request.form['path_server_snapshots']
+    show.path_linux_snapshots=request.form['path_linux_snapshots']
+    show.path_osx_snapshots=request.form['path_osx_snapshots']
+
     show.save()
 
     return 'done'

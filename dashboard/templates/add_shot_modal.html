@@ -1,5 +1,5 @@
 <form id="addShot" role="form" action="{{ url_for('shots_add') }}" method=post>
-  <input type="hidden" name="show_id" value="{{settings['active_show']}}">
+  <!-- <input type="hidden" name="show_id" value="{{settings['active_show']}}"> -->
   <!-- <div class="row">
     <div class="col-md-6">
       <div class="form-group">
@@ -15,8 +15,21 @@
   </div> -->
   <div class="row">
     <div class="col-md-12">
+        <div class="form-group">
+          <label for="show_id">Project</label>
+          <select name="show_id" id="show_id" class="form-control">
+            {% for prj in projects %}
+              <option value="{{projects[prj].id}}">{{projects[prj].name}}</option>
+            {% endfor %}
+          </select>
+        </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
       <div class="form-group">
-        <label for="project">Shot</label>
+        <label for="project">File</label>
         <div class="input-group">
           <input id="filepath" name="filepath" type="text" class="form-control">
           <div class="input-group-btn">
@@ -70,24 +83,18 @@
 <script>
   $(document).ready(function() {
 
-    {% if settings['active_show'] %}
-      $('#brenderModalLabel').text('Add shot for {{shows[settings["active_show"]]["name"]}}');
-    {% else %}
-      $('#brenderModalLabel').html('<h3>You have no an active show in the configuration.<br>Please select/create one!</h3>');
-    {% endif %}
-
     $('#filepath').val($('#modal_variable').val());
 
     $('#browse_filepath').click(function(e) {
       e.preventDefault();
-      $.get('/shots/browse/', function(data) {
+      window.show_id = $('#show_id')[0].value;
+      $.post('/shots/browse/', {show_id:window.show_id}, function(data) {
         $('.modal-body').html(data); 
       });
       
       $('.modal-footer').children('.btn-primary').text('Select');
       $('.modal-footer').children('.btn-primary').addClass('select-file');
     });
-
   });
 
 </script>

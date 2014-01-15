@@ -151,8 +151,7 @@ def worker(worker_id):
 def shows_index():
     shows = http_request(BRENDER_SERVER, '/shows')
     shows= json.loads(shows)
-    return render_template('shows.html', shows=shows, title='shows')
-
+    return render_template('shows.html', shows=shows, title='Projects')
 
 @app.route('/shows/update', methods=['POST'])
 def shows_update():
@@ -161,7 +160,10 @@ def shows_update():
         show_id=request.form['show_id'],
         path_server=request.form['path_server'],
         path_linux=request.form['path_linux'],
-        path_osx=request.form['path_osx'])
+        path_osx=request.form['path_osx'],
+        path_server_snapshots=request.form['path_server_snapshots'],
+        path_linux_snapshots=request.form['path_linux_snapshots'],
+        path_osx_snapshots=request.form['path_osx_snapshots'])
 
     print http_request(BRENDER_SERVER, '/shows/update', params)
 
@@ -182,7 +184,10 @@ def shows_add():
             name=request.form['name'],
             path_server=request.form['path_server'],
             path_linux=request.form['path_linux'],
-            path_osx=request.form['path_osx'])
+            path_osx=request.form['path_osx'],
+            path_server_snapshots=request.form['path_server_snapshots'],
+            path_linux_snapshots=request.form['path_linux_snapshots'],
+            path_osx_snapshots=request.form['path_osx_snapshots'])
 
         print http_request(BRENDER_SERVER, '/shows/add', params)
 
@@ -222,12 +227,13 @@ def shots_index():
     return render_template('shots.html', entries=entries, title='shots')
 
 
-@app.route('/shots/browse/', defaults={'path': ''})
-@app.route('/shots/browse/<path:path>',)
+@app.route('/shots/browse/', defaults={'path': ''}, methods=['GET', 'POST'])
+@app.route('/shots/browse/<path:path>', methods=['GET', 'POST'])
 def shots_browse(path):
+    show_id = request.form['show_id']
     path = os.path.join('/shots/browse/', path)
     print path
-    path_data = json.loads(http_request(BRENDER_SERVER, path))
+    path_data = json.loads(http_request(BRENDER_SERVER, path, {'show_id':show_id}))
     return render_template('browse_modal.html',
         # items=path_data['items'],
         items_list=path_data['items_list'],
@@ -287,7 +293,7 @@ def shots_add():
         return render_template('add_shot_modal.html',
                             render_settings=render_settings,
                             settings=settings,
-                            shows=shows)
+                            projects=shows)
 
 
 @app.route('/jobs/')

@@ -19,6 +19,8 @@ app = Flask(__name__, instance_relative_config=True)
 # loading external configuration
 app.config.from_object('config.WorkerConfig')
 
+logger = app.logger
+
 # maintaining this to not break existing code
 BRENDER_SERVER = app.config['BRENDER_SERVER']
 
@@ -31,13 +33,16 @@ if (len(sys.argv) > 1):
 else:
     PORT = 5000
 
-def http_request(command, values):
+def http_request(command, values, message=''):
     params = urllib.urlencode(values)
     try:
         urllib.urlopen(BRENDER_SERVER + '/' + command, params)
         #print(f.read())
     except IOError:
-        print("[Warning] Could not connect to server to register")
+        if message:
+            logger.warning("%s" % message)
+        else:
+            logger.warning("Could not connect to server")
 
 
 # this is going to be an HTTP request to the server with all the info
@@ -67,7 +72,7 @@ def start_worker():
         register_thread.setDaemon(False)
         register_thread.start()
 
-    app.run(host='0.0.0.0')
+    app.run(host='localhost')
 
 
 def _checkProcessOutput(process):
@@ -116,34 +121,67 @@ def info():
 def run_blender_in_thread(options):
     """We build the command to run blender in a thread
     """
-    render_command = [
-        options['blender_path'],
-        '--background',
-        options['file_path'],
-        '--python',
-        options['render_settings'],
-        '--frame-start' ,
-        options['start_frame'],
-        '--frame-end',
-        options['end_frame'],
-        '--render-anim',
-        '--enable-autoexec'
-        ]
 
-    print("[Info] Running %s" % render_command)
+    sync_command = options['copy_snapshot_command']
+    sync_process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sync_process.wait()
+    sync_retcode = sync_process.returncode
+    (stdout_msg, error_msg) = sync_process.communicate()
+    full_output = "%s\n %s" % (stdout_msg, error_msg)
+    if sync_retcode != 0:
+        status = 'error'
+    else:
 
-    process = subprocess.Popen(render_command,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    #flask.g.blender_process = process
-    (retcode, full_output) = _interactiveReadProcess(process, options["job_id"])
-    #flask.g.blender_process = None
-    print(full_output)
-    with open('log.log', 'w') as f:
-        f.write(full_output)
+        if os.path.isfile(options['file_path']):
+
+            render_command = [
+                options['blender_path'],
+                '--background',
+                options['file_path'],
+                '--python',
+                options['render_settings'],
+                '--frame-start' ,
+                options['start_frame'],
+                '--frame-end',
+                options['end_frame'],
+                '--render-anim',
+                '--enable-autoexec'
+                ]
+
+            logger.info("Running %s" % render_command)
+
+            process = subprocess.Popen(render_command,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+            #flask.g.blender_process = process
+            process.wait()
+            retcode = process.returncode
+            (stdout_msg, error_msg) = process.communicate()
+            full_output += stdout_msg + '\n*********** encountered errors ***********\n' + error_msg
+            #(retcode, full_output) = _interactiveReadProcess(process, options["job_id"])
+            #flask.g.blender_process = None
+            # print(full_output)
+
+            logger.info(full_output)
+            logger.info("return code is %s" % retcode)
+
+            if retcode == 0:
+                status = 'finished'
+            else:
+                status = 'error'
+        else:
+            status = 'error'
+            full_output += 'supplied file %s dosen\'t exist\n' % options['file_path']
+            logger.error(full_output)
+            retcode = 0
+
+    # with open('log.log', 'w') as f:
+        # f.write(full_output)
 
     http_request('jobs/update', {'id': options['job_id'],
-                                           'status': 'finished'})
+                                    'status': status,
+                                    'full_output': full_output,
+                                    'retcode': retcode})
 
 
 @app.route('/execute_job', methods=['POST'])
@@ -154,7 +192,8 @@ def execute_job():
         'blender_path': request.form['blender_path'],
         'start_frame': request.form['start'],
         'end_frame': request.form['end'],
-        'render_settings': request.form['render_settings']
+        'render_settings': request.form['render_settings'],
+        'copy_snapshot_command': request.form['copy_snapshot_command']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
