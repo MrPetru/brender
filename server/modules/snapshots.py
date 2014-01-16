@@ -6,6 +6,8 @@ from flask import (abort,
                    render_template,
                    request)
 
+from flask import current_app
+
 # TODO(sergey): Generally not a good idea to import *
 from model import *
 from utils import *
@@ -14,7 +16,6 @@ import time
 import subprocess
 
 snapshots_module = Blueprint('snapshot_module', __name__)
-
 
 @snapshots_module.route('/snapshots/')
 def snapshots():
@@ -48,7 +49,11 @@ def snapshots_add():
         prj_src_path = show.path_server
         prj_snapshot = os.path.join(snapshots_path, snapshot_id)
 
-        sync_command = "rsync -au %s/ %s/" % (prj_src_path, prj_snapshot)
+        if 'SYNC_COMMAND' in current_app.config:
+            print('using external config')
+            sync_command = current_app.config['SYNC_COMMAND'] % (prj_src_path, prj_snapshot)
+        else:
+            sync_command = 'rsync -au --exclude="*.blend?" --exclude="*_v[0-9][0-9].blend" --exclude="*.zip" %s/ %s/' % (prj_src_path, prj_snapshot)
 
         # register_thread = Thread(target=create_snapshot)
         # register_thread.setDaemon(True)
