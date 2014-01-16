@@ -17,7 +17,13 @@ def shows():
     # local database or if we should query attract for them
     shows = {}
     for show in Shows.select():
-        snapshot = Snapshots.select().where(Snapshots.show_id == show.id).order_by(Snapshots.name.desc()).limit(1).get()
+        try:
+            snapshot = Snapshots.select().where(Snapshots.show_id == show.id).order_by(Snapshots.name.desc()).limit(1).get()
+        except Snapshots.DoesNotExist:
+            snapshot = Snapshots()
+            snapshot.name = 'None'
+            snapshot.comment = 'None'
+
         shows[show.id] = dict(
             id=show.id,
             name=show.name,
