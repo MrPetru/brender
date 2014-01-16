@@ -122,13 +122,19 @@ def run_blender_in_thread(options):
     """We build the command to run blender in a thread
     """
 
-    sync_command = options['copy_snapshot_command']
-    sync_process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    sync_process.wait()
-    sync_retcode = sync_process.returncode
-    (stdout_msg, error_msg) = sync_process.communicate()
-    full_output = "%s\n %s" % (stdout_msg, error_msg)
-    if sync_retcode != 0:
+    retcode = 0
+    full_output = ''
+
+    if not os.path.exists(options['file_path']):
+        sync_command = options['copy_snapshot_command']
+        sync_process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        sync_process.wait()
+        retcode = sync_process.returncode
+        (stdout_msg, error_msg) = sync_process.communicate()
+        full_output += "%s\n %s" % (stdout_msg, error_msg)
+        logger.info("rsync return code is [%d] and full log is\n%s" % (retcode, full_output))
+
+    if retcode != 0:
         status = 'error'
     else:
 

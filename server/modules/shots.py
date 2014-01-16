@@ -69,13 +69,17 @@ def shots_browse(path):
     """
 
     show_id = request.form['show_id']
+    snapshot_id = request.form['snapshot_id']
+
+    snapshot = Snapshots.select().where(Snapshots.id == snapshot_id).get()
+
     #active_show = Settings.get(Settings.name == 'active_show')
     active_show = Shows.get(Shows.id == show_id)
 
     # path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # render_settings_path = os.path.join(path, 'render_settings/')
 
-    absolute_path_root = active_show.path_server
+    absolute_path_root = os.path.join(active_show.path_server_snapshots, snapshot.name)
     parent_path = ''
 
     if path != '':
@@ -211,7 +215,9 @@ def create_snapshot():
 def shot_add():
     print('adding shot')
 
-    snapshot_id = "%d" % round(time.time() * 1000000)
+    #snapshot_id = "%d" % round(time.time() * 1000000)
+    snapshot_id = request.form['snapshot_id']
+    print(snapshot_id)
 
     shot = Shots.create(
         attract_shot_id=1,
@@ -226,30 +232,30 @@ def shot_add():
         status='ready',
         priority=10,
         owner='fsiddi',
-        snapshot_id='')
+        snapshot_id=snapshot_id)
 
     # create a snapshot of files for this shot
     # server_side_path
     #active_show_name = Settings.get(Settings.name == 'active_show').value
-    show = Shows.get(Shows.id == shot.show_id)
-    snapshots_path = show.path_server_snapshots
+    #show = Shows.get(Shows.id == shot.show_id)
+    #snapshots_path = show.path_server_snapshots
 
-    if snapshots_path:
-        shot.snapshot_id = snapshot_id
-        shot.save()
+    # if snapshots_path:
+    #     shot.snapshot_id = snapshot_id
+    #     shot.save()
 
-        prj_src_path = show.path_server
-        prj_snapshot = os.path.join(snapshots_path, shot.snapshot_id)
+    #     prj_src_path = show.path_server
+    #     prj_snapshot = os.path.join(snapshots_path, shot.snapshot_id)
 
-        sync_command = "rsync -au %s/ %s/" % (prj_src_path, prj_snapshot)
+    #     sync_command = "rsync -au %s/ %s/" % (prj_src_path, prj_snapshot)
 
-        # register_thread = Thread(target=create_snapshot)
-        # register_thread.setDaemon(True)
-        # register_thread.start()
-        process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #     # register_thread = Thread(target=create_snapshot)
+    #     # register_thread.setDaemon(True)
+    #     # register_thread.start()
+    #     process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        process.wait()
-        print('return code from sync is %d' % process.returncode)
+    #     process.wait()
+    #     print('return code from sync is %d' % process.returncode)
 
     print('parsing shot to create jobs')
 
@@ -261,18 +267,6 @@ def shot_add():
 
     return 'done'
 
-def server_delete_snapshot(shot):
-    #active_show_name = Settings.get(Settings.name == 'active_show').value
-    show = Shows.get(Shows.id == shot.show_id)
-    prj_snapshot = os.path.join(show.path_server_snapshots, shot.snapshot_id)
-    if os.path.exists(prj_snapshot):
-        shutil.rmtree(prj_snapshot)
-    pass
-def linux_delete_snapshot(shot):
-    pass
-def osx_delete_snapshot(shot):
-    pass
-
 
 @shots_module.route('/shots/delete', methods=['POST'])
 def shots_delete():
@@ -280,10 +274,6 @@ def shots_delete():
     shots_list = list_integers_string(shot_ids)
     for shot_id in shots_list:
         shot = Shots.get(Shots.id == shot_id)
-        if shot.snapshot_id:
-            server_delete_snapshot(shot)
-            linux_delete_snapshot(shot)
-            osx_delete_snapshot(shot)
 
         print('working on', shot_id, '-', str(type(shot_id)))
         # first we delete the associated jobs (no foreign keys)

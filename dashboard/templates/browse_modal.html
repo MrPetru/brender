@@ -17,7 +17,7 @@
       e.preventDefault();
       //show_id = $('#show_id')[0].value;
       var url = '/shots/browse/' + $(this).attr('href');
-      $.post(url, {show_id:window.show_id}, function(data) {
+      $.post(url, {show_id:window.show_id, snapshot_id:window.snapshot_id}, function(data) {
         $('.modal-body').html(data); 
       });
     });
@@ -28,7 +28,8 @@
       $(this).parent().siblings().children('a').removeClass('active');
       $(this).addClass('active');
       $('#modal_variable').val($(this).attr('href'));
-
+      $('#snapshot_id').val(window.snapshot_id);
+      $('#show_id').val(window.show_id);
     });
 
     $('.select-file').click(function(e) {

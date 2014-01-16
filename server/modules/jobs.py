@@ -80,6 +80,7 @@ def start_job(worker, job):
 
     shot = Shots.get(Shots.id == job.shot_id)
     show = Shows.get(Shows.id == shot.show_id)
+    snapshot = Snapshots.get(Snapshots.id == shot.snapshot_id)
 
     filepath = shot.filepath
 
@@ -95,8 +96,8 @@ def start_job(worker, job):
         setting_render_settings = Settings.get(
             Settings.name == 'render_settings_path_linux')
 
-        shared_snapshot_path = os.path.join(show.path_linux, shot.snapshot_id)
-        local_snapshot_path = os.path.join(show.path_linux_snapshots, shot.snapshot_id)
+        shared_snapshot_path = os.path.join(show.path_linux, snapshot.name)
+        local_snapshot_path = os.path.join(show.path_linux_snapshots, snapshot.name)
 
         filepath = os.path.join(local_snapshot_path, shot.filepath)
 
@@ -117,7 +118,7 @@ def start_job(worker, job):
                       'post-run': 'clear variables, empty /tmp'}
     """
 
-    copy_snapshot_command = "rsync -au %s/ %s/" % (shared_snapshot_path, local_snapshot_path)
+    copy_snapshot_command = "rsync -au --exclude='*.blend?' %s/ %s/" % (shared_snapshot_path, local_snapshot_path)
     print(copy_snapshot_command)
 
     params = {'job_id': job.id,

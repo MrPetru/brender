@@ -17,6 +17,7 @@ def shows():
     # local database or if we should query attract for them
     shows = {}
     for show in Shows.select():
+        snapshot = Snapshots.select().where(Snapshots.show_id == show.id).order_by(Snapshots.name.desc()).limit(1).get()
         shows[show.id] = dict(
             id=show.id,
             name=show.name,
@@ -25,7 +26,8 @@ def shows():
             path_osx=show.path_osx,
             path_server_snapshots=show.path_server_snapshots,
             path_linux_snapshots=show.path_linux_snapshots,
-            path_osx_snapshots=show.path_osx_snapshots)
+            path_osx_snapshots=show.path_osx_snapshots,
+            snapshot=dict(name=snapshot.name, comment=snapshot.comment))
     
     return jsonify(shows)
 

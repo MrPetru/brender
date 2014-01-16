@@ -231,9 +231,11 @@ def shots_index():
 @app.route('/shots/browse/<path:path>', methods=['GET', 'POST'])
 def shots_browse(path):
     show_id = request.form['show_id']
+    snapshot_id = request.form['snapshot_id']
+    print(show_id, snapshot_id)
     path = os.path.join('/shots/browse/', path)
     print path
-    path_data = json.loads(http_request(BRENDER_SERVER, path, {'show_id':show_id}))
+    path_data = json.loads(http_request(BRENDER_SERVER, path, {'show_id':show_id, 'snapshot_id':snapshot_id}))
     return render_template('browse_modal.html',
         # items=path_data['items'],
         items_list=path_data['items_list'],
@@ -277,7 +279,8 @@ def shots_add():
             'render_settings': request.form['render_settings'],
             'status': 'running',
             'priority': 10,
-            'owner': 'fsiddi'
+            'owner': 'fsiddi',
+            'snapshot_id': request.form['snapshot_id']
         }
 
         http_request(BRENDER_SERVER, '/shots/add', shot_values)
@@ -289,11 +292,13 @@ def shots_add():
     else:
         render_settings = json.loads(http_request(BRENDER_SERVER, '/render-settings/'))
         shows = json.loads(http_request(BRENDER_SERVER, '/shows/'))
+        snapshots = json.loads(http_request(BRENDER_SERVER, '/snapshots/'))
         settings = json.loads(http_request(BRENDER_SERVER, '/settings/'))
         return render_template('add_shot_modal.html',
                             render_settings=render_settings,
                             settings=settings,
-                            projects=shows)
+                            projects=shows,
+                            snapshots=snapshots)
 
 
 @app.route('/jobs/')
@@ -405,6 +410,27 @@ def log():
 @app.route('/sandbox/')
 def sandbox():
     return render_template('sandbox.html', title='sandbox')
+
+@app.route('/snapshot/add', defaults={'show_id':''}, methods=['GET', 'POST'])
+@app.route('/snapshot/add/<show_id>', methods=['GET', 'POST'])
+def snapshot_add(show_id):
+    print(show_id)
+    if request.method == 'GET':
+        return render_template('add_snapshot_modal.html', title='New Snapshot', show_id=show_id)
+
+    elif request.method == 'POST':
+        #show = Shows.get(Shows.id == show_id)
+        snapshot_comment = request.form['snapshot_comment']
+
+        result = json.loads(http_request(BRENDER_SERVER, '/snapshots/add', {'show_id':show_id, 'snapshot_comment':snapshot_comment}))
+        print(result)
+
+        #return '%s: %s' % (result['message'], result['name'])
+        return redirect(url_for('shows_index'))
+
+# @app.route('/snapshots', methods=['GET'])
+# def snapshots():
+#     pass
 
 
 @app.errorhandler(404)

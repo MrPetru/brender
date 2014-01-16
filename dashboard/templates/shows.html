@@ -59,11 +59,20 @@
                   <input name="path_osx_snapshots" type="text" class="form-control" value="{{shows[show]['path_osx_snapshots']}}">
               </div>
             </div>
+            <div class="form-group">
+              <label for="snapshot_comment" class="col-sm-2 control-label">Last snapshot</label>
+              <div name="snapshot_comment" class="col-sm-10">
+                  {{shows[show]['snapshot']['name']}}
+                  <br>
+                  {{shows[show]['snapshot']['comment']}}
+              </div>
+            </div>
 
             <div class="form-group">
               <div class="col-sm-offset-2 col-sm-10">
                 <button type="submit" class="btn btn-default">Update</button>
                 <button class="btn btn-danger">Delete</button>
+                <input type="button" value="New Snapshot" class="btn btn-info" data-toggle="modal" modal="{{ url_for('snapshot_add') }}/{{shows[show]['id']}}" data-target="#addSnapshotModal">
               </div>
             </div>
           </form>

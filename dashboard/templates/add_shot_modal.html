@@ -28,6 +28,19 @@
 
   <div class="row">
     <div class="col-md-12">
+        <div class="form-group">
+          <label for="snapshot_id">Snapshot</label>
+          <select name="snapshot_id" id="snapshot_id" class="form-control">
+            {% for sn in snapshots %}
+              <option value="{{snapshots[sn].id}}" class="{{snapshots[sn].show_id}}">{{snapshots[sn].name}} - {{snapshots[sn].comment}}</option>
+            {% endfor %}
+          </select>
+        </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12">
       <div class="form-group">
         <label for="project">File</label>
         <div class="input-group">
@@ -82,13 +95,32 @@
 
 <script>
   $(document).ready(function() {
+    if (window.show_id) {
+      $('#snapshot_id').val(window.snapshot_id);
+      $('#show_id').val(window.show_id);
+    };
+
+    function update_snapshot_select() {
+      $('#snapshot_id option').filter( function() {
+        return !$(this).hasClass($('#show_id').val());
+      }).hide();
+      $('#snapshot_id option').filter( function() {
+        return $(this).hasClass($('#show_id').val());
+      }).show();
+      console.log($('#snapshot_id option').first().val());
+      $('#snapshot_id').val($('#snapshot_id option.'+$('#show_id').val()).first().val());
+    }
+
+    update_snapshot_select();
+    $('#show_id').bind('change', update_snapshot_select);
 
     $('#filepath').val($('#modal_variable').val());
 
     $('#browse_filepath').click(function(e) {
       e.preventDefault();
       window.show_id = $('#show_id')[0].value;
-      $.post('/shots/browse/', {show_id:window.show_id}, function(data) {
+      window.snapshot_id = $('#snapshot_id')[0].value;
+      $.post('/shots/browse/', {show_id:window.show_id, snapshot_id:window.snapshot_id}, function(data) {
         $('.modal-body').html(data); 
       });
       
