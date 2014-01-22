@@ -131,6 +131,7 @@ def start_job(worker, job):
               'start': job.chunk_start,
               'end': job.chunk_end,
               'repo_path': repo_path,
+              'server_repo_path': shot.path_server, 
               'rev': rev,
               'repo_type': repo_type}
 
