@@ -6,3 +6,4 @@ class WorkerConfig(object):
 	DEBUG = True
 	BRENDER_SERVER = 'http://localhost:9999'
 	SSH_KEY_FILE = ''
+	REPO_SOURCE = 'ssh://user@hostname//path/to/repo'

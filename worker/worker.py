@@ -131,6 +131,7 @@ def run_blender_in_thread(options):
         from mercurial.error import RepoError
 
         ssh_key_file = current_app.config['SSH_KEY_FILE']
+        source = current_app.config['REPO_SOURCE']
         try:
             repo = hg.repository(ui.ui(), options['repo_path'])
         except RepoError:
