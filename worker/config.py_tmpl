@@ -5,3 +5,4 @@ class WorkerConfig(object):
 	
 	DEBUG = True
 	BRENDER_SERVER = 'http://localhost:9999'
+	SSH_KEY_FILE = ''

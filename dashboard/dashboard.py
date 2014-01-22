@@ -161,9 +161,9 @@ def shows_update():
         path_server=request.form['path_server'],
         path_linux=request.form['path_linux'],
         path_osx=request.form['path_osx'],
-        path_server_snapshots=request.form['path_server_snapshots'],
-        path_linux_snapshots=request.form['path_linux_snapshots'],
-        path_osx_snapshots=request.form['path_osx_snapshots'])
+        #repo_type=request.form['repo_type'],
+        repo_update_cmd=request.form['repo_update_cmd'],
+        repo_checkout_cmd=request.form['repo_checkout_cmd'])
 
     print http_request(BRENDER_SERVER, '/shows/update', params)
 
@@ -185,9 +185,9 @@ def shows_add():
             path_server=request.form['path_server'],
             path_linux=request.form['path_linux'],
             path_osx=request.form['path_osx'],
-            path_server_snapshots=request.form['path_server_snapshots'],
-            path_linux_snapshots=request.form['path_linux_snapshots'],
-            path_osx_snapshots=request.form['path_osx_snapshots'])
+            repo_type=request.form['repo_type'],
+            repo_update_cmd=request.form['repo_update_cmd'],
+            repo_checkout_cmd=request.form['repo_checkout_cmd'])
 
         print http_request(BRENDER_SERVER, '/shows/add', params)
 
@@ -292,13 +292,11 @@ def shots_add():
     else:
         render_settings = json.loads(http_request(BRENDER_SERVER, '/render-settings/'))
         shows = json.loads(http_request(BRENDER_SERVER, '/shows/'))
-        snapshots = json.loads(http_request(BRENDER_SERVER, '/snapshots/'))
         settings = json.loads(http_request(BRENDER_SERVER, '/settings/'))
         return render_template('add_shot_modal.html',
                             render_settings=render_settings,
                             settings=settings,
-                            projects=shows,
-                            snapshots=snapshots)
+                            projects=shows)
 
 
 @app.route('/jobs/')
@@ -411,27 +409,16 @@ def log():
 def sandbox():
     return render_template('sandbox.html', title='sandbox')
 
-@app.route('/snapshot/add', defaults={'show_id':''}, methods=['GET', 'POST'])
-@app.route('/snapshot/add/<show_id>', methods=['GET', 'POST'])
-def snapshot_add(show_id):
-    print(show_id)
-    if request.method == 'GET':
-        return render_template('add_snapshot_modal.html', title='New Snapshot', show_id=show_id)
+@app.route('/repo/revisions/<show_id>')
+def repo_revisions(show_id):
+    result = json.loads(http_request(BRENDER_SERVER, '/repo/revisions/%s' % show_id))
+    print(result)
+    return jsonify({'revisions':result['revisions']})
 
-    elif request.method == 'POST':
-        #show = Shows.get(Shows.id == show_id)
-        snapshot_comment = request.form['snapshot_comment']
-
-        result = json.loads(http_request(BRENDER_SERVER, '/snapshots/add', {'show_id':show_id, 'snapshot_comment':snapshot_comment}))
-        print(result)
-
-        #return '%s: %s' % (result['message'], result['name'])
-        return redirect(url_for('shows_index'))
-
-# @app.route('/snapshots', methods=['GET'])
-# def snapshots():
-#     pass
-
+@app.route('/repo/checkout/<show_id>/<rev>')
+def repo_checkout(show_id, rev):
+    result = http_request(BRENDER_SERVER, '/repo/checkout/%s/%s' % (show_id, rev))
+    return result
 
 @app.errorhandler(404)
 def page_not_found(error):

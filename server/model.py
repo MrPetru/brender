@@ -41,9 +41,9 @@ class Shows(BaseModel):
     path_server = TextField()
     path_linux = TextField()
     path_osx = TextField()
-    path_server_snapshots = TextField()
-    path_linux_snapshots = TextField()
-    path_osx_snapshots = TextField()
+    repo_type = TextField()
+    repo_update_cmd = TextField()
+    repo_checkout_cmd = TextField()
 
 
 class Shots(BaseModel):

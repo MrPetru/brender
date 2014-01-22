@@ -1,74 +1,50 @@
 <form id="addShow" role="form" action="{{ url_for('shows_add') }}" method=post>
 
-  <!-- <div class="row">
-    <div class="col-md-12">
-      <div class="form-group">
-        <label for="project">Show</label>
-        <div class="input-group">
-          <input id="filepath" name="filepath" type="text" class="form-control">
-          <div class="input-group-btn">
-            <a id="browse_filepath" type="button" class="btn btn-default">Browse</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div> -->
-
-  <div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-          <label for="shot_name">Project name</label>
-          <input type="text" class="form-control" id="show_name" name="name" placeholder="a2s31" required="">
-        </div>
+  <div class="row well-sm">
+   <label>Project</label>
+    <div class="input-group">
+      <label for="shot_name" class="input-group-addon">Name</label>
+      <input type="text" class="form-control" id="show_name" name="name" placeholder="a2s31" required="">
     </div>
   </div>
 
-  <div class="row">
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="frame_start">Server path</label>
-          <input type="text" class="form-control" id="show_path_server" name="path_server" required="">
-        </div>
+  <div class="row well-sm">
+    <label>Path</label>
+    <div class="input-group">
+      <label for="frame_start" class="input-group-addon">Server</label>
+      <input type="text" class="form-control" id="show_path_server" name="path_server" required="">
     </div>
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="frame_start">Server snapshots</label>
-          <input type="text" class="form-control" id="show_path_server_snapshots" name="path_server_snapshots" required="">
-        </div>
+    <br>
+    <div class="input-group">
+      <label for="frame_end" class="input-group-addon">Linux</label>
+      <input type="text" class="form-control" id="show_path_linux" name="path_linux" required="">
     </div>
+    <br>
+    <div class="input-group">
+    <label for="show_osx_path" class="input-group-addon">OSX</label>
+    <input type="text" class="form-control" id="show_path_osx" name="path_osx" required="">
+    </div>
+  </div>
 
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="frame_end">Linux shared snapshots</label>
-          <input type="text" class="form-control" id="show_path_linux" name="path_linux" required="">
-        </div>
+  <div class="row well-sm">
+    <label>Repo</label>
+    <div class="input-group">
+      <label for="repo_type" class="input-group-addon">Type</label>
+      <select class="form-control" id="repo_type" name="repo_type">
+        <option value="none">None</option>
+        <option value="mercurial">Mercurial</option>
+        <option value="subversion">Subversion</option>
+      </select>
     </div>
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="frame_end">Linux local snapshots</label>
-          <input type="text" class="form-control" id="show_path_linux_snapshots" name="path_linux_snapshots" required="">
-        </div>
+    <br>
+    <div class="input-group">
+      <label for="repo_update_cmd" class="input-group-addon">Update</label>
+      <input type="text" class="form-control" id="repo_update_cmd" name="repo_update_cmd">
     </div>
-
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="show_osx_path">OSX shared snapshots</label>
-          <input type="text" class="form-control" id="show_path_osx" name="path_osx" required="">
-        </div>
+    <br>
+    <div class="input-group">
+      <label for="repo_checkout_cmd" class="input-group-addon">checkout</label>
+      <input type="text" class="form-control" id="repo_checkout_cmd" name="repo_checkout_cmd">
     </div>
-    <div class="col-md-12">
-        <div class="form-group">
-          <label for="show_osx_path">OSX local snapshots</label>
-          <input type="text" class="form-control" id="show_path_osx_snapshots" name="path_osx_snapshots" required="">
-        </div>
-    </div>
-  </div>       
-
+  </div>
 </form>
-
-<script>
-  $(document).ready(function() {
-
-  });
-
-</script>

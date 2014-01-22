@@ -9,7 +9,7 @@ from modules.shots import shots_module
 from modules.shows import shows_module
 from modules.settings import settings_module
 from modules.stats import stats_module
-from modules.snapshots import snapshots_module
+from modules.repository import repo_module
 
 # instance_relative_config is used later to load configuration from path relative to this file
 app = Flask(__name__, instance_relative_config=True)
@@ -88,5 +88,5 @@ if __name__ == "__main__":
     app.register_blueprint(shows_module)
     app.register_blueprint(settings_module)
     app.register_blueprint(stats_module)
-    app.register_blueprint(snapshots_module)
+    app.register_blueprint(repo_module)
     app.run(host=app.config['HOST'])

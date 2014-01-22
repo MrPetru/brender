@@ -30,9 +30,9 @@ def shows():
             path_server=show.path_server,
             path_linux=show.path_linux,
             path_osx=show.path_osx,
-            path_server_snapshots=show.path_server_snapshots,
-            path_linux_snapshots=show.path_linux_snapshots,
-            path_osx_snapshots=show.path_osx_snapshots,
+            repo_type=show.repo_type,
+            repo_update_cmd=show.repo_update_cmd,
+            repo_checkout_cmd=show.repo_checkout_cmd,
             snapshot=dict(name=snapshot.name, comment=snapshot.comment))
     
     return jsonify(shows)
@@ -52,9 +52,9 @@ def get_show(show_id):
         path_server=show.path_server,
         path_linux=show.path_linux,
         path_osx=show.path_osx,
-        path_server_snapshots=show.path_server_snapshots,
-        path_linux_snapshots=show.path_linux_snapshots,
-        path_osx_snapshots=show.path_osx_snapshots)
+        repo_type=show.repo_type,
+        repo_update_cmd=show.repo_update_cmd,
+        repo_checkout_cmd=show.repo_checkout_cmd)
 
 
 @shows_module.route('/shows/add', methods=['POST'])
@@ -63,18 +63,18 @@ def show_add():
     path_osx = request.form['path_osx']
     path_server = request.form['path_server']
 
-    path_linux_snapshots = request.form['path_linux_snapshots']
-    path_osx_snapshots = request.form['path_osx_snapshots']
-    path_server_snapshots = request.form['path_server_snapshots']
+    repo_type = request.form['repo_type']
+    repo_update_cmd = request.form['repo_update_cmd']
+    repo_checkout_cmd = request.form['repo_checkout_cmd']
 
     show = Shows.create(
         name=request.form['name'],
         path_server=path_server,
         path_linux=path_linux,
         path_osx=path_osx,
-        path_server_snapshots=path_server_snapshots,
-        path_linux_snapshots=path_linux_snapshots,
-        path_osx_snapshots=path_osx_snapshots)
+        repo_type=repo_type,
+        repo_update_cmd=repo_update_cmd,
+        repo_checkout_cmd=repo_checkout_cmd)
 
     return 'done'
 
@@ -92,9 +92,9 @@ def shows_update():
     show.path_linux=request.form['path_linux']
     show.path_osx=request.form['path_osx']
 
-    show.path_server_snapshots=request.form['path_server_snapshots']
-    show.path_linux_snapshots=request.form['path_linux_snapshots']
-    show.path_osx_snapshots=request.form['path_osx_snapshots']
+    #repo_type = request.form['repo_type']
+    show.repo_update_cmd=request.form['repo_update_cmd']
+    show.repo_checkout_cmd=request.form['repo_checkout_cmd']
 
     show.save()
 

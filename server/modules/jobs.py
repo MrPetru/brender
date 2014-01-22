@@ -80,7 +80,7 @@ def start_job(worker, job):
 
     shot = Shots.get(Shots.id == job.shot_id)
     show = Shows.get(Shows.id == shot.show_id)
-    snapshot = Snapshots.get(Snapshots.id == shot.snapshot_id)
+    #snapshot = Snapshots.get(Snapshots.id == shot.snapshot_id)
 
     filepath = shot.filepath
 
@@ -89,6 +89,11 @@ def start_job(worker, job):
             Settings.name == 'blender_path_osx')
         setting_render_settings = Settings.get(
             Settings.name == 'render_settings_path_osx')
+
+        repo_path = show.path_osx
+        rev = shot.snapshot_id
+        repo_type = show.repo_type
+
         filepath = os.path.join(show.path_osx, shot.filepath)
     else:
         setting_blender_path = Settings.get(
@@ -96,10 +101,11 @@ def start_job(worker, job):
         setting_render_settings = Settings.get(
             Settings.name == 'render_settings_path_linux')
 
-        shared_snapshot_path = os.path.join(show.path_linux, snapshot.name)
-        local_snapshot_path = os.path.join(show.path_linux_snapshots, snapshot.name)
+        repo_path = show.path_linux
+        rev = shot.snapshot_id
+        repo_type = show.repo_type
 
-        filepath = os.path.join(local_snapshot_path, shot.filepath)
+        filepath = os.path.join(show.path_linux, shot.filepath)
 
     blender_path = setting_blender_path.value
     render_settings = os.path.join(
@@ -118,16 +124,15 @@ def start_job(worker, job):
                       'post-run': 'clear variables, empty /tmp'}
     """
 
-    copy_snapshot_command = "rsync -au --exclude='*.blend?' %s/ %s/" % (shared_snapshot_path, local_snapshot_path)
-    print(copy_snapshot_command)
-
     params = {'job_id': job.id,
               'file_path': filepath,
               'blender_path': blender_path,
               'render_settings': render_settings,
               'start': job.chunk_start,
               'end': job.chunk_end,
-              'copy_snapshot_command':copy_snapshot_command}
+              'repo_path': repo_path,
+              'rev': rev,
+              'repo_type': repo_type}
 
     http_request(worker_ip_address, '/execute_job', params)
     #  get a reply from the worker (running, error, etc)

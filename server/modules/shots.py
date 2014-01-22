@@ -69,9 +69,9 @@ def shots_browse(path):
     """
 
     show_id = request.form['show_id']
-    snapshot_id = request.form['snapshot_id']
+    #snapshot_id = request.form['snapshot_id']
 
-    snapshot = Snapshots.select().where(Snapshots.id == snapshot_id).get()
+    #snapshot = Snapshots.select().where(Snapshots.id == snapshot_id).get()
 
     #active_show = Settings.get(Settings.name == 'active_show')
     active_show = Shows.get(Shows.id == show_id)
@@ -79,7 +79,7 @@ def shots_browse(path):
     # path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # render_settings_path = os.path.join(path, 'render_settings/')
 
-    absolute_path_root = os.path.join(active_show.path_server_snapshots, snapshot.name)
+    absolute_path_root = active_show.path_server
     parent_path = ''
 
     if path != '':
@@ -233,29 +233,6 @@ def shot_add():
         priority=10,
         owner='fsiddi',
         snapshot_id=snapshot_id)
-
-    # create a snapshot of files for this shot
-    # server_side_path
-    #active_show_name = Settings.get(Settings.name == 'active_show').value
-    #show = Shows.get(Shows.id == shot.show_id)
-    #snapshots_path = show.path_server_snapshots
-
-    # if snapshots_path:
-    #     shot.snapshot_id = snapshot_id
-    #     shot.save()
-
-    #     prj_src_path = show.path_server
-    #     prj_snapshot = os.path.join(snapshots_path, shot.snapshot_id)
-
-    #     sync_command = "rsync -au %s/ %s/" % (prj_src_path, prj_snapshot)
-
-    #     # register_thread = Thread(target=create_snapshot)
-    #     # register_thread.setDaemon(True)
-    #     # register_thread.start()
-    #     process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    #     process.wait()
-    #     print('return code from sync is %d' % process.returncode)
 
     print('parsing shot to create jobs')
 

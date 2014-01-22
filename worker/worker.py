@@ -12,6 +12,7 @@ import gocept.cache.method
 from threading import Thread
 from flask import Flask, redirect, url_for, request, jsonify
 from uuid import getnode as get_mac_address
+from flask import current_app
 
 # instance_relative_config is used later to load configuration from path relative to this file
 app = Flask(__name__, instance_relative_config=True)
@@ -125,14 +126,27 @@ def run_blender_in_thread(options):
     retcode = 0
     full_output = ''
 
-    if not os.path.exists(options['file_path']):
-        sync_command = options['copy_snapshot_command']
-        sync_process = subprocess.Popen(sync_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sync_process.wait()
-        retcode = sync_process.returncode
-        (stdout_msg, error_msg) = sync_process.communicate()
-        full_output += "%s\n %s" % (stdout_msg, error_msg)
-        logger.info("rsync return code is [%d] and full log is\n%s" % (retcode, full_output))
+    if options['repo_type'] == 'mercurial':
+        from mercurial import hg, ui, commands
+        from mercurial.error import RepoError
+
+        ssh_key_file = current_app.config['SSH_KEY_FILE']
+        try:
+            repo = hg.repository(ui.ui(), options['repo_path'])
+        except RepoError:
+            if ssh_key_file:
+                commands.clone(ui.ui(), source, dest=options['repo_path'], ssh="ssh -i %s" % ssh_key_file)
+            else:
+                commands.clone(ui.ui(), source, dest=options['repo_path'])
+            repo = hg.repository(ui.ui(), options['repo_path'])
+
+        if ssh_key_file:
+            commands.pull(ui.ui(), repo, ssh="ssh -i %s" % ssh_key_file)
+        else:
+            commands.pull(ui.ui(), repo)
+        commands.update(ui.ui(), repo, rev=options['rev'])
+        full_output += 'cannot get interface to repo'
+        retcode = 1001
 
     if retcode != 0:
         status = 'error'
@@ -199,7 +213,9 @@ def execute_job():
         'start_frame': request.form['start'],
         'end_frame': request.form['end'],
         'render_settings': request.form['render_settings'],
-        'copy_snapshot_command': request.form['copy_snapshot_command']
+        'repo_path': request.form['repo_path'],
+        'repo_type': request.form['repo_type'],
+        'rev': request.form['rev']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
