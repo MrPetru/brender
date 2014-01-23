@@ -183,9 +183,9 @@ def run_blender_in_thread(options):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             #flask.g.blender_process = process
-            process.wait()
-            retcode = process.returncode
+            #process.wait()
             (stdout_msg, error_msg) = process.communicate()
+            retcode = process.returncode
             full_output += stdout_msg + '\n*********** encountered errors ***********\n' + error_msg
             #(retcode, full_output) = _interactiveReadProcess(process, options["job_id"])
             #flask.g.blender_process = None

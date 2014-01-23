@@ -381,15 +381,15 @@ def log():
     path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
     log_files = []
-    for i in glob.iglob('*.log'):
-        log_files.append(i)
+    for i in glob.iglob(os.path.join(path, '*.log')):
+        log_files.append(os.path.basename(i))
     print('[Debug] %s') % log_files
     if request.method == 'POST':
 
         result = request.form['log_files']
         if result:
             try:
-                with open(result) as log:
+                with open(os.path.join(path, result)) as log:
                         lines = log.readlines()
                 return render_template('log.html',
                                        title='logs',
@@ -412,7 +412,6 @@ def sandbox():
 @app.route('/repo/revisions/<show_id>')
 def repo_revisions(show_id):
     result = json.loads(http_request(BRENDER_SERVER, '/repo/revisions/%s' % show_id))
-    print(result)
     return jsonify({'revisions':result['revisions']})
 
 @app.route('/repo/checkout/<show_id>/<rev>')
