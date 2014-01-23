@@ -130,8 +130,8 @@ def run_blender_in_thread(options):
         from mercurial import hg, ui, commands
         from mercurial.error import RepoError
 
-        ssh_key_file = current_app.config['SSH_KEY_FILE']
-        source = current_app.config['REPO_SOURCE'] + options['server_repo_path']
+        ssh_key_file = options['ssh_key_file']
+        source = options['repo_source'] + options['server_repo_path']
         try:
             repo = hg.repository(ui.ui(), options['repo_path'])
         except RepoError:
@@ -216,7 +216,9 @@ def execute_job():
         'render_settings': request.form['render_settings'],
         'repo_path': request.form['repo_path'],
         'repo_type': request.form['repo_type'],
-        'rev': request.form['rev']
+        'rev': request.form['rev'],
+        'ssh_key_file': current_app.config['SSH_KEY_FILE'],
+        'repo_source': current_app.config['REPO_SOURCE']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
