@@ -73,7 +73,7 @@ def start_worker():
         register_thread.setDaemon(False)
         register_thread.start()
 
-    app.run(host='localhost')
+    app.run(host='0.0.0.0')
 
 
 def _checkProcessOutput(process):
