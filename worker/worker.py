@@ -130,24 +130,32 @@ def run_blender_in_thread(options):
         from mercurial import hg, ui, commands
         from mercurial.error import RepoError
 
-        ssh_key_file = options['ssh_key_file']
-        source = options['repo_source'] + options['server_repo_path']
+        ssh_key_file = options['ssh_key_file'].encode()
+        source = (options['repo_source'] + options['server_repo_path']).encode()
         try:
-            repo = hg.repository(ui.ui(), options['repo_path'])
+            repo = hg.repository(ui.ui(), options['repo_path'].encode())
         except RepoError:
             if ssh_key_file:
-                commands.clone(ui.ui(), source, dest=options['repo_path'], ssh="ssh -i %s" % ssh_key_file)
+                commands.clone(ui.ui(), source, dest=options['repo_path'].encode(), ssh="ssh -i %s" % ssh_key_file)
             else:
-                commands.clone(ui.ui(), source, dest=options['repo_path'])
-            repo = hg.repository(ui.ui(), options['repo_path'])
+                commands.clone(ui.ui(), source, dest=options['repo_path'].encode())
+            repo = hg.repository(ui.ui(), options['repo_path'].encode())
 
         if ssh_key_file:
-            commands.pull(ui.ui(), repo, ssh="ssh -i %s" % ssh_key_file)
+            try:
+                commands.pull(ui.ui(), repo, source=source, ssh="ssh -i %s" % ssh_key_file)
+            except RepoError:
+                full_output += 'cannot get interface to repo'
+                retcode = 1001
         else:
-            commands.pull(ui.ui(), repo)
-        commands.update(ui.ui(), repo, rev=options['rev'])
-        full_output += 'cannot get interface to repo'
-        retcode = 1001
+            try:
+                commands.pull(ui.ui(), repo, source=source)
+            except RepoError:
+                full_output += 'cannot get interface to repo'
+                retcode = 1001
+
+        if retcode == 0:
+            commands.update(ui.ui(), repo, rev=options['rev'])
 
     if retcode != 0:
         status = 'error'
