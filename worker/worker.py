@@ -218,7 +218,8 @@ def execute_job():
         'repo_type': request.form['repo_type'],
         'rev': request.form['rev'],
         'ssh_key_file': current_app.config['SSH_KEY_FILE'],
-        'repo_source': current_app.config['REPO_SOURCE']
+        'repo_source': current_app.config['REPO_SOURCE'],
+        'server_repo_path': request.form['server_repo_path']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
