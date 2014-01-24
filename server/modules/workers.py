@@ -84,3 +84,13 @@ def workers_edit():
 
     return jsonify(result='success')
 
+@workers_module.route('/workers/delete', methods=['POST'])
+def workers_delete():
+    worker_ids = request.form['id']
+
+    if worker_ids:
+        for worker_id in list_integers_string(worker_ids):
+            query = Workers.delete().where(Workers.id == worker_id)
+            query.execute()
+
+        return jsonify(result='success')

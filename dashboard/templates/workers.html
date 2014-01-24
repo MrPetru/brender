@@ -57,7 +57,39 @@
                     console.log('Workers ' + workers_ids + ' updated : ' + status);
                     // redrawing the table to display changes
                     //workersTable.fnDraw();
-                    $("#workers").dataTable().fnDraw();
+                    //$("#workers").dataTable().fnDraw();
+                    location.reload(true);
+            });
+        });
+
+        $(document).on("click", "#workers-delete", function() {
+
+            var workers = new Array();
+
+            var checkbox_list = $( "tbody input:checked" );
+            for (var i = checkbox_list.length - 1; i >= 0; i--) {
+                var checkbox = checkbox_list[i];
+                workers.push($(checkbox).val());
+            };
+
+            if (workers.length == 0) {
+                alert("please select one or more worker to be deleted");
+                return false;
+            };
+
+            //console.log(shots);
+            workers_ids = workers.join();
+
+            status = $(this).html();
+            params = { 'id' : workers_ids}
+
+            $.post("/workers/delete", params)
+                .done(function(data) {
+                    console.log('Workers ' + workers_ids + ' updated : ' + status);
+                    // redrawing the table to display changes
+                    //workersTable.fnDraw();
+                    //$("#workers").dataTable().fnDraw();
+                    location.reload(true);
             });
         });
 
@@ -82,6 +114,7 @@
               <ul class="dropdown-menu" role="menu">
                 <li><a href="#" id="workers-disable" status="disabled">Disable</a></li>
                 <li><a href="#" id="workers-enable" status="enabled">Enable</a></li>
+                <li><a href="#" id="workers-delete">Delete</a></li>
                 <li class="divider"></li>
                 <li><a href="#" id="workers-restart">Restart</a></li>
               </ul>

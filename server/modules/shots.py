@@ -50,13 +50,17 @@ def shots():
         if percentage_done == 100:
             shot.status = 'completed'
 
+        show = Shows.get(Shows.id == shot.show_id)
+        project_name = show.name
+
         shots[shot.id] = {"frame_start": shot.frame_start,
                           "frame_end": shot.frame_end,
                           "current_frame": shot.current_frame,
                           "status": shot.status,
                           "shot_name": shot.shot_name,
                           "percentage_done": percentage_done,
-                          "render_settings": shot.render_settings}
+                          "render_settings": shot.render_settings,
+                          "project_name": project_name}
     return jsonify(shots)
 
 

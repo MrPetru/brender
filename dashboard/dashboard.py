@@ -6,7 +6,6 @@ import urllib
 from os import listdir
 from os.path import isfile, join, abspath
 from glob import iglob
-
 from flask import (flash,
                    Flask,
                    jsonify,
@@ -35,6 +34,7 @@ def http_request(ip_address, method, post_params=False):
 
     print('message sent, reply follows:')
     return f.read()
+
 
 def list_integers_string(string_list):
     """Accepts comma separated string list of integers
@@ -77,7 +77,6 @@ def workers():
     return render_template('workers.html', entries=entries, title='workers')
 
 
-
 @app.route('/workers/edit', methods=['POST'])
 def workers_edit():
     worker_ids = request.form['id']
@@ -90,6 +89,16 @@ def workers_edit():
                                'config': worker_config})
     f = urllib.urlopen("http://" + BRENDER_SERVER + "/workers/edit", params)
 
+    return jsonify(status='ok')
+
+@app.route('/workers/delete', methods=['POST'])
+def workers_delete():
+    worker_ids = request.form['id']
+
+    params = urllib.urlencode({'id': worker_ids})
+    f = urllib.urlopen("http://" + BRENDER_SERVER + "/workers/delete", params)
+
+    #return redirect(url_for('workers'))
     return jsonify(status='ok')
 
 
@@ -128,11 +137,13 @@ def worker(worker_id):
                                 '1min': 'N/A',
                                 '15min': 'N/A'
                             },
-                            'worker_num_cpus': 'N/A',
-                            'worker_cpu_percent': 'N/A',
+                        },
+                        'update_less_frequent': {
                             'worker_architecture': 'N/A',
                             'worker_mem_percent': 'N/A',
-                            'worker_disk_percent': 'N/A'
+                            'worker_disk_percent': 'N/A',
+                            'worker_cpu_percent': 'N/A',
+                            'worker_num_cpus': 'N/A',
                         },
                         'hostname': 'N/A',
                         'system': 'N/A',
@@ -150,7 +161,8 @@ def worker(worker_id):
 @app.route('/shows/')
 def shows_index():
     shows = http_request(BRENDER_SERVER, '/shows')
-    shows= json.loads(shows)
+
+    shows = json.loads(shows)
     return render_template('shows.html', shows=shows, title='Projects')
 
 @app.route('/shows/update', methods=['POST'])
@@ -165,22 +177,24 @@ def shows_update():
         repo_update_cmd=request.form['repo_update_cmd'],
         repo_checkout_cmd=request.form['repo_checkout_cmd'])
 
-    print http_request(BRENDER_SERVER, '/shows/update', params)
+    http_request(BRENDER_SERVER, '/shows/update', params)
 
-    shows = http_request(BRENDER_SERVER, '/shows/')
-    shows = json.loads(shows)
-    return render_template('shows.html', shows=shows, title='shows')
+    return redirect(url_for('shows_index'))
+
+
+@app.route('/shows/delete/<show_id>', methods=['GET', 'POST'])
+def shows_delete(show_id):
+    http_request(BRENDER_SERVER, '/shows/delete/' + show_id)
+    return redirect(url_for('shows_index'))
+
 
 @app.route('/shows/add', methods=['GET', 'POST'])
 def shows_add():
     """
         Create a new show entry in database
     """
-
     if request.method == 'POST':
-        # create show
         params = dict(
-            #show_id=request.form['show_id'],
             name=request.form['name'],
             path_server=request.form['path_server'],
             path_linux=request.form['path_linux'],
@@ -189,10 +203,8 @@ def shows_add():
             repo_update_cmd=request.form['repo_update_cmd'],
             repo_checkout_cmd=request.form['repo_checkout_cmd'])
 
-        print http_request(BRENDER_SERVER, '/shows/add', params)
-
+        http_request(BRENDER_SERVER, '/shows/add', params)
         return redirect(url_for('shows_index'))
-
     elif request.method == 'GET':
         # render form template
         return render_template('show_add.html', title='shows')
@@ -217,9 +229,10 @@ def shots_index():
             "0": val['checkbox'],
             "1": key,
             "2": val['shot_name'],
-            "3": val['percentage_done'],
-            "4": val['render_settings'],
-            "5": val['status']})
+            "3": val['project_name'],
+            "4": val['percentage_done'],
+            "5": val['render_settings'],
+            "6": val['status']})
         #print(v)
 
     entries = json.dumps(shots_list)
@@ -267,6 +280,11 @@ def shots_start():
 @app.route('/shots/add', methods=['GET', 'POST'])
 def shots_add():
     if request.method == 'POST':
+        try:
+            snapshot_id = request.form['snapshot_id']
+        except:
+            snapshot_id = ''
+
         shot_values = {
             'attract_shot_id': 1,
             'show_id': request.form['show_id'],
@@ -280,7 +298,7 @@ def shots_add():
             'status': 'running',
             'priority': 10,
             'owner': 'fsiddi',
-            'snapshot_id': request.form['snapshot_id']
+            'snapshot_id': snapshot_id
         }
 
         http_request(BRENDER_SERVER, '/shots/add', shot_values)
@@ -312,9 +330,10 @@ def jobs_index():
             "DT_RowId": "worker_" + str(key),
             "0": val['checkbox'],
             "1": key,
-            "2": val['percentage_done'],
-            "3": val['priority'],
-            "4": val['status']
+            "2": val['parent'],
+            "3": val['percentage_done'],
+            "4": val['priority'],
+            "5": val['status']
             })
         #print(v)
 

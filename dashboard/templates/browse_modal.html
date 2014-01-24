@@ -15,7 +15,6 @@
     // Focuses on first input textbox after it loads the window.
     $('.folder').click(function(e) {
       e.preventDefault();
-      //show_id = $('#show_id')[0].value;
       var url = '/shots/browse/' + $(this).attr('href');
       $.post(url, {show_id:window.show_id, snapshot_id:window.snapshot_id}, function(data) {
         $('.modal-body').html(data); 

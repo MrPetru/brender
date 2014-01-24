@@ -79,6 +79,22 @@ def show_add():
     return 'done'
 
 
+@shows_module.route('/shows/delete/<int:show_id>', methods=['GET', 'POST'])
+def shows_delete(show_id):
+    shots_show = Shots.select().where(Shots.show_id == show_id)
+    for shot_show in shots_show:
+        print '[Debug] Deleting shot (%s) for show %s ' % (shot_show.shot_name, shot_show.show_id)
+        jobs = Jobs.select().where(Jobs.shot_id == shot_show.id)
+        for j in jobs:
+            j.delete_instance()
+        shot_show.delete_instance()
+
+    show = Shows.get(Shows.id == show_id)
+    if show:
+      show.delete_instance()
+    return 'done'
+
+
 @shows_module.route('/shows/update', methods=['POST'])
 def shows_update():
 
@@ -97,9 +113,7 @@ def shows_update():
     show.repo_checkout_cmd=request.form['repo_checkout_cmd']
 
     show.save()
-
     return 'done'
-
 
 
 @shows_module.route('/render-shows/')

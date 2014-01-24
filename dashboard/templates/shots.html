@@ -12,12 +12,14 @@
           null,
           null,
           null,
+          null,
           null
       ],
 
       "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
 
-        $('td:eq(3)', nRow).html('<div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="' + aData[3] + '" aria-valuemin="0" aria-valuemax="100" style="width: ' + aData[3] + '%;"><span class="sr-only">' + aData[3] + '% Complete</span></div></div>');
+        $('td:eq(4)', nRow).html('<div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="' + aData[4] + '" aria-valuemin="0" aria-valuemax="100" style="width: ' + aData[4] + '%;"><span class="sr-only">' + aData[4] + '% Complete</span></div></div>');
+        $('td:eq(1)', nRow).html('<a href="/shot/' + aData[1] + '"> ' + aData[1] + ' </a>');
         }
     });
 
@@ -121,6 +123,7 @@
             <th width="1%"><input class="check-all" type="checkbox"></th>
             <th width="30%">Shot (thumbnail)</th>
             <th width="20%">Shot name</th>
+            <th width="20%">Project name</th>
             <th width="20%">Completion</th>
             <th width="20%">Configuration</th>
             <th width="10%">Status</th>
@@ -134,6 +137,7 @@
             <th></th>
             <th>Thumbnail</th>
             <th>Shot name</th>
+            <th>Project name</th>
             <th>Completion</th>
             <th>Configuration</th>
             <th>Status</th>

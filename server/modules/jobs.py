@@ -218,6 +218,11 @@ def jobs():
     percentage_done = 0
     for job in Jobs.select():
 
+        shot = Shots.get(Shots.id == job.shot_id)
+        show = Shows.get(Shows.id == shot.show_id)
+
+        parent = "%s/%s" % (show.name, shot.shot_name)
+
         frame_count = job.chunk_end - job.chunk_start + 1
         current_frame = job.current_frame - job.chunk_start + 1
         percentage_done = Decimal(current_frame) / Decimal(frame_count) * Decimal(100)
@@ -228,7 +233,8 @@ def jobs():
                         "current_frame": job.current_frame,
                         "status": job.status,
                         "percentage_done": percentage_done,
-                        "priority": job.priority}
+                        "priority": job.priority,
+                        "parent": parent}
     return jsonify(jobs)
 
 

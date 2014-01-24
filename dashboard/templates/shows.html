@@ -1,6 +1,14 @@
 {% extends "layout.html" %}
 {% block footer_scripts %}
-
+<script>
+  $('[data-toggle="popover"]').popover({
+    html: true,
+    trigger: 'click',
+    'placement': 'top',
+    container: 'body',
+    animation: true
+  });
+</script>
 {% endblock %}
 {% block body %}
   <h1 class="page-title">{{title}}</h1>
@@ -13,9 +21,11 @@
     <div class="col-md-12">
       <div class="panel panel-default">
         <div class="panel-heading">
-            <h3 class="panel-title">
-                {{shows[show]['name']}}
-            </h3>
+          <h3 class="panel-title">
+            {{shows[show]['name']}}
+            <a id="pop-{{show}}" href="#" class="glyphicon glyphicon-remove pull-right" data-toggle="popover", title="<p class='text-danger'>Delete {{shows[show]['name']}}?</p>" data-content="<a onclick=&quot;$('#pop-{{show}}').popover('hide');&quot; class='btn btn-default'>Close</a>&nbsp;<a href='/shows/delete/{{ show }}' class='btn btn-danger'>Delete</a>"></a>
+            <div class="clearfix"></div>
+          </h3>
         </div>
         <div class="panel-body">
           <form class="form-horizontal" role="form" method="post" action="{{ url_for('shows_update') }}">
