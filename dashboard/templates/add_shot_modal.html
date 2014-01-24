@@ -131,7 +131,7 @@
       var show_id = $('#show_id').val();
 
       $.get('/repo/checkout/'+show_id+'/'+rev, function(data) {
-        console.log(data);
+        alert("checkout revision "+rev);
       })
     };
 
