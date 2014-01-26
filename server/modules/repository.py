@@ -41,7 +41,7 @@ def repo_checkout(show_id, rev):
 def repo_revisions(show_id):
     print(show_id)
     if not show_id:
-        return 'no show id were provided'
+        return jsonify({'revisions':[], 'message':'no show id were provided'})
         
     if request.method == 'GET':
         show = Shows.get(Shows.id == show_id)
@@ -64,9 +64,9 @@ def repo_revisions(show_id):
             return jsonify({'revisions':revisions, 'message':''})
 
         else:
-            return 'cannot handle repository of type %s' % show.repo_type
+            return jsonify({'revisions':[], 'message': 'cannot handle repository of type %s' % show.repo_type})
 
     elif request.method == 'POST':
         return jsonify({'revisions':[]})
     else:
-        return 'unknown request method %s' % request.method
+        return jsonify({'revisions': [], 'message': 'unknown request method %s' % request.method})
