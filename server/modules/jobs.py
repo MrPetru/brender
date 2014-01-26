@@ -271,7 +271,8 @@ def jobs_update():
     elif status in ['error']:
         shot.status = 'error'
         shot.save()
-        delete_jobs(job.shot_id)
+        job.status = 'error'
+        job.save()
     else:
         print('receiveed status is %s' % status)
 
