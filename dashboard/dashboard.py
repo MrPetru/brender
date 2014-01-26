@@ -15,24 +15,26 @@ from flask import (flash,
                    url_for,
                    make_response)
 
-# instance_relative_config is used later to load configuration from path relative to this file
+# load configuration relative to path of this file
 app = Flask(__name__, instance_relative_config=True)
 
-# loading external configuration
+# effective load of configuration
 app.config.from_object('config.DashboardConfig')
 
 # maintaining this to not break existing code
 BRENDER_SERVER = app.config['BRENDER_SERVER']
 
+logger = app.logger
+
 def http_request(ip_address, method, post_params=False):
-    # post_params must be a dictionnary
+    # post_params must be a dictionary
     if post_params:
         params = urllib.urlencode(post_params)
         f = urllib.urlopen('http://' + ip_address + method, params)
     else:
         f = urllib.urlopen('http://' + ip_address + method)
 
-    print('message sent, reply follows:')
+    logger.info('message sent, reply follows:')
     return f.read()
 
 
@@ -55,7 +57,6 @@ def index():
 @app.route('/workers/')
 def workers():
     workers = http_request(BRENDER_SERVER, '/workers')
-    #print(workers)
     workers = json.loads(workers)
     workers_list = []
 
@@ -70,7 +71,6 @@ def workers():
             "4": val['connection'],
             "5": val['status']
         })
-        #print(v)
 
     entries = json.dumps(workers_list)
 
@@ -87,6 +87,8 @@ def workers_edit():
     params = urllib.urlencode({'id': worker_ids,
                                'status': worker_status,
                                'config': worker_config})
+
+    # TODO: here should be a check to see if server return an error or not
     f = urllib.urlopen("http://" + BRENDER_SERVER + "/workers/edit", params)
 
     return jsonify(status='ok')
@@ -96,16 +98,16 @@ def workers_delete():
     worker_ids = request.form['id']
 
     params = urllib.urlencode({'id': worker_ids})
+
+    # TODO: here should be a check to see if server return an error or not
     f = urllib.urlopen("http://" + BRENDER_SERVER + "/workers/delete", params)
 
-    #return redirect(url_for('workers'))
     return jsonify(status='ok')
 
 
 @app.route('/worker/<worker_id>')
 def worker(worker_id):
-    #print(workers)
-    worker = None
+
     try:
         workers = http_request(BRENDER_SERVER, '/workers')
         workers = json.loads(workers)
@@ -117,7 +119,7 @@ def worker(worker_id):
             2. UnboundLocalError
             3. NameError
             '''
-        print 'worker does not exist'
+        logger.error('worker does not exist')
 
     if worker_id in workers:
         for key, val in workers.iteritems():
@@ -173,10 +175,10 @@ def shows_update():
         path_server=request.form['path_server'],
         path_linux=request.form['path_linux'],
         path_osx=request.form['path_osx'],
-        #repo_type=request.form['repo_type'],
         repo_update_cmd=request.form['repo_update_cmd'],
         repo_checkout_cmd=request.form['repo_checkout_cmd'])
 
+    # TODO: here should be a check to see if server return an error or not
     http_request(BRENDER_SERVER, '/shows/update', params)
 
     return redirect(url_for('shows_index'))
@@ -190,8 +192,7 @@ def shows_delete(show_id):
 
 @app.route('/shows/add', methods=['GET', 'POST'])
 def shows_add():
-    """
-        Create a new show entry in database
+    """Create a new show entry in database
     """
     if request.method == 'POST':
         params = dict(
@@ -218,7 +219,6 @@ def shows_add():
 @app.route('/shots/')
 def shots_index():
     shots = http_request(BRENDER_SERVER, '/shots')
-    #print(shots)
     shots = json.loads(shots)
     shots_list = []
 
@@ -233,10 +233,8 @@ def shots_index():
             "4": val['percentage_done'],
             "5": val['render_settings'],
             "6": val['status']})
-        #print(v)
 
     entries = json.dumps(shots_list)
-
     return render_template('shots.html', entries=entries, title='shots')
 
 
@@ -245,12 +243,10 @@ def shots_index():
 def shots_browse(path):
     show_id = request.form['show_id']
     snapshot_id = request.form['snapshot_id']
-    print(show_id, snapshot_id)
     path = os.path.join('/shots/browse/', path)
-    print path
+    logger.debug(path)
     path_data = json.loads(http_request(BRENDER_SERVER, path, {'show_id':show_id, 'snapshot_id':snapshot_id}))
     return render_template('browse_modal.html',
-        # items=path_data['items'],
         items_list=path_data['items_list'],
         parent_folder=path + '/..')
 
@@ -258,7 +254,6 @@ def shots_browse(path):
 @app.route('/shots/delete', methods=['POST'])
 def shots_delete():
     shot_ids = request.form['id']
-    print(shot_ids)
     params = {'id': shot_ids}
     shots = http_request(BRENDER_SERVER, '/shots/delete', params)
     return 'done'
@@ -320,7 +315,6 @@ def shots_add():
 @app.route('/jobs/')
 def jobs_index():
     jobs = http_request(BRENDER_SERVER, '/jobs')
-    #print(shots)
     jobs = json.loads(jobs)
     jobs_list = []
 
@@ -335,7 +329,6 @@ def jobs_index():
             "4": val['priority'],
             "5": val['status']
             })
-        #print(v)
 
     entries = json.dumps(jobs_list)
 
@@ -402,7 +395,7 @@ def log():
     log_files = []
     for i in glob.iglob(os.path.join(path, '*.log')):
         log_files.append(os.path.basename(i))
-    print('[Debug] %s') % log_files
+    logger.debug(log_files)
     if request.method == 'POST':
 
         result = request.form['log_files']
