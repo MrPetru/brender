@@ -108,9 +108,7 @@ def start_job(worker, job):
         filepath = os.path.join(show.path_linux, shot.filepath)
 
     blender_path = setting_blender_path.value
-    render_settings = os.path.join(
-        setting_render_settings.value , 
-        shot.render_settings)
+    render_settings = shot.render_settings
 
     worker_ip_address = worker.ip_address
 

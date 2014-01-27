@@ -13,6 +13,8 @@ from threading import Thread
 from flask import Flask, redirect, url_for, request, jsonify
 from uuid import getnode as get_mac_address
 from flask import current_app
+import tempfile
+import json
 
 # instance_relative_config is used later to load configuration from path relative to this file
 app = Flask(__name__, instance_relative_config=True)
@@ -38,12 +40,21 @@ def http_request(command, values, message=''):
     params = urllib.urlencode(values)
     try:
         urllib.urlopen(BRENDER_SERVER + '/' + command, params)
-        #print(f.read())
     except IOError:
         if message:
             logger.warning("%s" % message)
         else:
             logger.warning("Could not connect to server")
+
+def http_request_get(command):
+    try:
+        return urllib.urlopen(BRENDER_SERVER + '/' + command).read()
+    except IOError:
+        if message:
+            logger.warning("%s" % message)
+        else:
+            logger.warning("Could not connect to server")
+        return None
 
 
 # this is going to be an HTTP request to the server with all the info
@@ -126,6 +137,21 @@ def run_blender_in_thread(options):
     retcode = 0
     full_output = ''
 
+    # get content of render config file from server and save it to the worker tmp  position
+    # this situation is useful when a worker can't have a shared resource with server
+    logger.info("get render config data")
+    result = json.loads(http_request_get('render-settings/%s' % options['render_settings']))
+    if result:
+        content = result['text']
+        tmpf = tempfile.NamedTemporaryFile(mode='w', delete=True, suffix='.py')
+        options['render_settings'] = tmpf.name
+        f = tmpf.file
+        f.write(content)
+        f.close()
+    else:
+        full_output += "can't get render config file"
+        retcode = 1002
+
     if options['repo_type'] == 'mercurial':
         from mercurial import hg, ui, commands
         from mercurial.error import RepoError
@@ -206,6 +232,10 @@ def run_blender_in_thread(options):
 
     # with open('log.log', 'w') as f:
         # f.write(full_output)
+
+    # cleaning, close tmp file and it will be deleted in automatic
+    if result:
+        tmpf.close()
 
     http_request('jobs/update', {'id': options['job_id'],
                                     'status': status,
