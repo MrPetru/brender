@@ -144,6 +144,11 @@ def start_job(worker, job):
 
     return 'Job started'
 
+def shutdown(worker):
+    worker_ip_address = worker.ip_address
+    http_request(worker_ip_address, '/poweroff')
+    return 'done'
+
 
 def dispatch_jobs(shot_id = None):
     for worker in Workers.select().where(
@@ -158,6 +163,11 @@ def dispatch_jobs(shot_id = None):
             job.status = 'running'
             job.save()
         except Jobs.DoesNotExist:
+            # no more jobs, we can poweroff worker machine
+                # check if worker should go down
+                # send poweroff command
+            if worker.poweroff == 'poweroff':
+                shutdown(worker)
             print '[error] Job does not exist'
         if job:
             start_job(worker, job)

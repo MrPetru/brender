@@ -69,7 +69,8 @@ def workers():
             "2": val['system'],
             "3": val['ip_address'],
             "4": val['connection'],
-            "5": val['status']
+            "5": val['status'],
+            "6": val['poweroff']
         })
 
     entries = json.dumps(workers_list)

@@ -17,13 +17,6 @@ def shows():
     # local database or if we should query attract for them
     shows = {}
     for show in Shows.select():
-        try:
-            snapshot = Snapshots.select().where(Snapshots.show_id == show.id).order_by(Snapshots.name.desc()).limit(1).get()
-        except Snapshots.DoesNotExist:
-            snapshot = Snapshots()
-            snapshot.name = 'None'
-            snapshot.comment = 'None'
-
         shows[show.id] = dict(
             id=show.id,
             name=show.name,
@@ -32,8 +25,7 @@ def shows():
             path_osx=show.path_osx,
             repo_type=show.repo_type,
             repo_update_cmd=show.repo_update_cmd,
-            repo_checkout_cmd=show.repo_checkout_cmd,
-            snapshot=dict(name=snapshot.name, comment=snapshot.comment))
+            repo_checkout_cmd=show.repo_checkout_cmd)
     
     return jsonify(shows)
 

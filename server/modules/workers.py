@@ -9,6 +9,7 @@ workers_module = Blueprint('workers_module', __name__)
 def update_worker(worker, worker_data):
     if worker.connection != 'offline':
         worker.connection = 'online'
+        worker.poweroff = ''
         worker.save()
 
     http_request(worker.ip_address, '/update', worker_data)
@@ -33,12 +34,17 @@ def workers():
             print('[Warning] Worker', worker.hostname, 'is not online')
             worker.connection = 'offline'
 
+        if worker.poweroff == 'poweroff':
+            poweroff = "will shutdown when no more jobs"
+        else:
+            poweroff = ''
         workers[worker.hostname] = {"id": worker.id,
                                     "hostname": worker.hostname,
                                     "status": worker.status,
                                     "connection": worker.connection,
                                     "system": worker.system,
-                                    "ip_address": worker.ip_address}
+                                    "ip_address": worker.ip_address,
+                                    "poweroff": poweroff}
 
     """
     This is a temporary solution for saving the workers connections:
@@ -68,21 +74,33 @@ def workers_update():
 @workers_module.route('/workers/edit', methods=['POST'])
 def workers_edit():
     worker_ids = request.form['id']
-    worker_data = {"status": request.form['status'],
-                   "config": request.form['config']}
+    worker_status = request.form['status']
 
-    if worker_ids:
-        for worker_id in list_integers_string(worker_ids):
-            worker = Workers.get(Workers.id == worker_id)
-            update_worker(worker, worker_data)
+    if worker_status in ['disabled', 'enabled']:
+        worker_data = {"status": request.form['status'],
+                       "config": request.form['config']}
+
+        if worker_ids:
+            for worker_id in list_integers_string(worker_ids):
+                worker = Workers.get(Workers.id == worker_id)
+                update_worker(worker, worker_data)
+
+            return jsonify(result='success')
+        else:
+            print('we edit all the workers')
+            for worker in Workers.select():
+                update_worker(worker, worker_data)
 
         return jsonify(result='success')
-    else:
-        print('we edit all the workers')
-        for worker in Workers.select():
-            update_worker(worker, worker_data)
 
-    return jsonify(result='success')
+    elif worker_status in ['poweroff']:
+        if worker_ids:
+            for worker_id in list_integers_string(worker_ids):
+                worker = Workers.get(Workers.id == worker_id)
+                worker.poweroff = 'poweroff'
+                worker.save()
+
+        return jsonify(result='sccess')
 
 @workers_module.route('/workers/delete', methods=['POST'])
 def workers_delete():

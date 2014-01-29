@@ -365,6 +365,10 @@ def run_info():
                    update_frequent=get_system_load_frequent(),
                    update_less_frequent=get_system_load_less_frequent()
                    )
+@app.route('/poweroff')
+def poweroff():
+    os.system("sudo /sbin/poweroff")
+    return 'poweroff now'
 
 if __name__ == "__main__":
     start_worker()

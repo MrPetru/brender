@@ -28,6 +28,7 @@ class Workers(BaseModel):
     system = CharField()
     ip_address = CharField()
     connection = CharField()
+    poweroff = CharField()
 
 
 class Shows(BaseModel):
@@ -102,14 +103,14 @@ class Settings(BaseModel):
     name = CharField()
     value = CharField()
 
-class Snapshots(BaseModel):
-    """
-    List of snapshots available for a specific project
-    """
+# class Snapshots(BaseModel):
+#     """
+#     List of snapshots available for a specific project
+#     """
 
-    name = CharField()
-    show_id = IntegerField()
-    comment = TextField()
+#     name = CharField()
+#     show_id = IntegerField()
+#     comment = TextField()
 
 
 def create_tables():
@@ -124,7 +125,7 @@ def create_tables():
     Shots.create_table()
     Jobs.create_table()
     Settings.create_table()
-    Snapshots.create_table()
+    # Snapshots.create_table()
 
 
 def add_random_workers(workers_amount):

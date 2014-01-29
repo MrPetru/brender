@@ -62,7 +62,8 @@ def connect():
                                     warning=False,
                                     config='{}',
                                     system=system,
-                                    ip_address=ip_address)
+                                    ip_address=ip_address,
+                                    poweroff='')
 
             print('Worker has been added')
 
