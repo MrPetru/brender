@@ -33,6 +33,14 @@ def workers():
         except Exception, e:
             print('[Warning] Worker', worker.hostname, 'is not online')
             worker.connection = 'offline'
+            worker.status = 'enabled'
+            worker.save()
+
+            # if worker is offline we will reset frames if assigned to that worker
+            frames = Frames.select().where((Frames.worker_id == worker.id) & (Frames.status == 'running'))
+            for f in frames:
+                f.status = 'ready'
+                f.save()
 
         if worker.poweroff == 'poweroff':
             poweroff = "will shutdown when no more jobs"

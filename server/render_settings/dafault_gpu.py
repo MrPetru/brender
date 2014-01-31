@@ -1,12 +1,8 @@
-import bpy
-
-print ('Overriding settings using base_720p.py')
-
-bpy.context.scene.render.resolution_x = 1280
-bpy.context.scene.render.resolution_y = 720
-
 
 # ============== start dender configutation and render process ===========
+
+bpy.context.user_preferences.system.compute_device_type = 'CUDA'
+bpy.context.user_preferences.system.compute_device = 'CUDA_0'
 
 import bpy
 import sys

@@ -144,33 +144,111 @@ def start_job(worker, job):
 
     return 'Job started'
 
-def shutdown(worker):
-    worker_ip_address = worker.ip_address
-    http_request(worker_ip_address, '/poweroff')
-    return 'done'
+# def shutdown(worker):
+#     worker_ip_address = worker.ip_address
+#     http_request(worker_ip_address, '/poweroff')
+#     return 'done'
 
+# def render_frames(worker, shot, frames):
 
-def dispatch_jobs(shot_id = None):
+#     show = Shows.get(Shows.id == shot.show_id)
+#     #snapshot = Snapshots.get(Snapshots.id == shot.snapshot_id)
+
+#     filepath = shot.filepath
+
+#     if 'Darwin' in worker.system:
+#         setting_blender_path = Settings.get(
+#             Settings.name == 'blender_path_osx')
+#         setting_render_settings = Settings.get(
+#             Settings.name == 'render_settings_path_osx')
+
+#         repo_path = show.path_osx
+#         rev = shot.snapshot_id
+#         repo_type = show.repo_type
+
+#         filepath = os.path.join(show.path_osx, shot.filepath)
+#     else:
+#         setting_blender_path = Settings.get(
+#             Settings.name == 'blender_path_linux')
+#         setting_render_settings = Settings.get(
+#             Settings.name == 'render_settings_path_linux')
+
+#         repo_path = show.path_linux
+#         rev = shot.snapshot_id
+#         repo_type = show.repo_type
+
+#         filepath = os.path.join(show.path_linux, shot.filepath)
+
+#     blender_path = setting_blender_path.value
+#     render_settings = shot.render_settings
+
+#     worker_ip_address = worker.ip_address
+
+#     params = {'file_path': filepath,
+#               'blender_path': blender_path,
+#               'render_settings': render_settings,
+#               'frames': ' '.join(frames),
+#               'repo_path': repo_path,
+#               'server_repo_path': show.path_server, 
+#               'rev': rev,
+#               'repo_type': repo_type,
+#               'shot_id': shot.id}
+
+#     http_request(worker_ip_address, '/execute_job', params)
+#     #  get a reply from the worker (running, error, etc)
+
+#     return 'render started'
+
+def dispatch_jobs(shot = None):
+    if not shot:
+        print("I don't know which of shot to run, please select one")
+        return
     for worker in Workers.select().where(
         (Workers.status == 'enabled') & (Workers.connection == 'online')):
-        # pick the job with the highest priority (it means the lowest number)
-        job = None # will figure out another way
-        try:
-            job = Jobs.select().where(
-                Jobs.status == 'ready'
-            ).order_by(Jobs.priority.desc()).limit(1).get()
 
-            job.status = 'running'
-            job.save()
-        except Jobs.DoesNotExist:
-            # no more jobs, we can poweroff worker machine
-                # check if worker should go down
-                # send poweroff command
+        frames_to_render = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'ready')).limit(shot.chunk_size)
+        #frames_to_render = q.execute()
+        print(shot.chunk_size)
+        #print(frames_to_render.count())
+        frame_list = []
+        for f in frames_to_render:
+            print(f.frame)
+            f.status = 'running'
+            f.worker_id = worker.id
+            frame_list.append(str(f.frame))
+        
+        # save modifications to database
+        for f in frames_to_render:
+            f.save()
+
+        print ('frame_list=', frame_list)
+
+        if not frame_list:
+            print('no more frames to render for shot=%s' % shot.shot_name)
             if worker.poweroff == 'poweroff':
                 shutdown(worker)
-            print '[error] Job does not exist'
-        if job:
-            start_job(worker, job)
+            return
+        else:
+            render_frames(worker, shot, frame_list)
+
+        # # pick the job with the highest priority (it means the lowest number)
+        # job = None # will figure out another way
+        # try:
+        #     job = Jobs.select().where(
+        #         Jobs.status == 'ready'
+        #     ).order_by(Jobs.priority.desc()).limit(1).get()
+
+        #     job.status = 'running'
+        #     job.save()
+        # except Jobs.DoesNotExist:
+        #     # no more jobs, we can poweroff worker machine
+        #         # check if worker should go down
+        #         # send poweroff command
+        #     if worker.poweroff == 'poweroff':
+        #         shutdown(worker)
+        #     print '[error] Job does not exist'
+        # if job:
+        #     start_job(worker, job)
 
 
 def delete_job(job_id):

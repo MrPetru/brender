@@ -103,14 +103,15 @@ class Settings(BaseModel):
     name = CharField()
     value = CharField()
 
-# class Snapshots(BaseModel):
-#     """
-#     List of snapshots available for a specific project
-#     """
+class Frames(BaseModel):
+    frame = IntegerField()
+    shot_id = IntegerField()
+    status = CharField()
+    worker_id = IntegerField(default=None, null = True)
+    worker_hostname = CharField(default='', null = True)
+    result_path = CharField(default='', null=True)
+    duration = FloatField(default=None, null=True)
 
-#     name = CharField()
-#     show_id = IntegerField()
-#     comment = TextField()
 
 
 def create_tables():

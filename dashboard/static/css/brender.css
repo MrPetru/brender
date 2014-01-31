@@ -107,3 +107,9 @@ h2 {
 .waiting {
     color:orange;
 }
+
+.progressbar-text {
+    color: #000000;
+    position: relative;
+    top: -2px;
+}

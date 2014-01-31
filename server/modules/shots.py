@@ -7,6 +7,7 @@ from os.path import isfile, isdir, join, abspath, dirname
 from model import *
 from jobs import *
 from utils import *
+from frames import dispatch_frames
 
 import subprocess
 import time
@@ -36,12 +37,9 @@ def shots():
         # percentage_done = round(percentage_done, 1)
 
         # get count of completed jobs and not
-        finished = 0
-        total = 0
-        for j in Jobs.select().where(Jobs.shot_id == shot.id):
-            total+=1
-            if j.status == 'finished':
-                finished+=1
+        total = shot.frame_end - shot.frame_start + 1
+        finished = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'done')).count()
+
         if finished > 0:
             percentage_done = round((float(finished)  / float(total)) * 100.0, 1)
         else:
@@ -60,7 +58,9 @@ def shots():
                           "shot_name": shot.shot_name,
                           "percentage_done": percentage_done,
                           "render_settings": shot.render_settings,
-                          "project_name": project_name}
+                          "project_name": project_name,
+                          "frame_total": total,
+                          "frame_done": finished}
     return jsonify(shots)
 
 
@@ -141,16 +141,10 @@ def shots_start():
 
         if shot.status == 'running':
             pass
-        elif shot.status in ['error', 'completed']:
-            delete_jobs(shot.id)
-            create_jobs(shot)
-            shot.status = 'running'
-            shot.save()
-            dispatch_jobs()
         elif shot.status in ['stopped', 'ready']:
             shot.status = 'running'
             shot.save()
-            dispatch_jobs()
+        dispatch_frames()
 
         # if shot.status != 'running':
         #     shot.status = 'running'
@@ -201,6 +195,12 @@ def shots_reset():
         if shot.status == 'running':
             return 'Shot %d is running' % shot_id
         else:
+            frames = Frames.select().where(Frames.shot_id == shot.id)
+            for f in frames:
+                f.status = 'ready'
+                f.worker_id = None
+                f.save()
+
             shot.current_frame = shot.frame_start
             shot.status = 'ready'
             shot.save()
@@ -238,6 +238,13 @@ def shot_add():
         owner='fsiddi',
         snapshot_id=snapshot_id)
 
+    # create frames entries
+    for f in range(shot.frame_start, shot.frame_end + 1):
+        Frames.create(
+            frame=f,
+            shot_id=shot.id,
+            status='ready')
+
     print('parsing shot to create jobs')
 
     create_jobs(shot)
@@ -254,6 +261,10 @@ def shots_delete():
     shot_ids = request.form['id']
     shots_list = list_integers_string(shot_ids)
     for shot_id in shots_list:
+        frames = Frames.select().where(Frames.shot_id == shot_id)
+        for f in frames:
+            f.delete_instance()
+
         shot = Shots.get(Shots.id == shot_id)
 
         print('working on', shot_id, '-', str(type(shot_id)))

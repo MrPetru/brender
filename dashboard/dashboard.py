@@ -13,7 +13,8 @@ from flask import (flash,
                    render_template,
                    request,
                    url_for,
-                   make_response)
+                   make_response,
+                   Response)
 
 # load configuration relative to path of this file
 app = Flask(__name__, instance_relative_config=True)
@@ -233,7 +234,10 @@ def shots_index():
             "3": val['project_name'],
             "4": val['percentage_done'],
             "5": val['render_settings'],
-            "6": val['status']})
+            "6": val['status'],
+            "7": val['frame_done'],
+            "8": val['frame_total']
+            })
 
     entries = json.dumps(shots_list)
     return render_template('shots.html', entries=entries, title='shots')
@@ -431,6 +435,43 @@ def repo_revisions(show_id):
 def repo_checkout(show_id, rev):
     result = http_request(BRENDER_SERVER, '/repo/checkout/%s/%s' % (show_id, rev))
     return result
+
+@app.route('/frames/<shot>')
+def frames_index(shot):
+    frames = http_request(BRENDER_SERVER, '/frames/%s' % shot)
+    frames = json.loads(frames)
+    frames_list = []
+
+    
+
+    for key, val in frames.iteritems():
+        val['checkbox'] = '<input type="checkbox" value="' + key + '" />'
+        frames_list.append({
+            "DT_RowId": "frame" + str(key),
+            "0": val['checkbox'],
+            "1": key,
+            "2": val['frame'],
+            "3": val['status'],
+            "4": val['duration'],
+            "5": val['worker'],
+            "6": val['paths']
+            })
+    show_id = val['show_id']
+
+    entries = json.dumps(frames_list)
+
+    return render_template('frames.html', entries=entries, title='Frames', shot_id=shot, show_id=show_id)
+
+@app.route('/frames/reset/<shot>', methods=['POST'])
+def frames_update(shot):
+    http_request(BRENDER_SERVER, '/frames/reset/%s' % shot, request.form)
+    return 'done'
+
+@app.route('/frames/download/<show_id>/<filename>', methods=['GET'])
+def frames_download(show_id, filename):
+    repo_path = json.loads(http_request(BRENDER_SERVER, '/shows/%s' % show_id))['path_server']
+    fpath = os.path.join(repo_path, '..', request.args.get('path'))
+    return Response(open(fpath).read(), mimetype='application/octet-stream')
 
 @app.errorhandler(404)
 def page_not_found(error):

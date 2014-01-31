@@ -195,12 +195,14 @@ def run_blender_in_thread(options):
                 options['file_path'],
                 '--python',
                 options['render_settings'],
-                '--frame-start' ,
-                options['start_frame'],
-                '--frame-end',
-                options['end_frame'],
-                '--render-anim',
-                '--enable-autoexec'
+                '--enable-autoexec',
+                '--',
+                '--frames',
+                options['frames'],
+                '--server',
+                BRENDER_SERVER,
+                '--shot',
+                options['shot_id']
                 ]
 
             logger.info("Running %s" % render_command)
@@ -226,7 +228,7 @@ def run_blender_in_thread(options):
                 status = 'error'
         else:
             status = 'error'
-            full_output += 'supplied file %s dosen\'t exist\n' % options['file_path']
+            full_output += 'supplied file %s doesn\'t exist\n' % options['file_path']
             logger.error(full_output)
             retcode = 0
 
@@ -237,27 +239,31 @@ def run_blender_in_thread(options):
     if result:
         tmpf.close()
 
-    http_request('jobs/update', {'id': options['job_id'],
+    http_request('frames/update/%s' % options['shot_id'], {'frames': options['frames'],
                                     'status': status,
                                     'full_output': full_output,
                                     'retcode': retcode})
+
+    # http_request('jobs/update', {'id': options['job_id'],
+    #                                 'status': status,
+    #                                 'full_output': full_output,
+    #                                 'retcode': retcode})
 
 
 @app.route('/execute_job', methods=['POST'])
 def execute_job():
     options = {
-        'job_id': request.form['job_id'],
         'file_path': request.form['file_path'],
         'blender_path': request.form['blender_path'],
-        'start_frame': request.form['start'],
-        'end_frame': request.form['end'],
+        'frames': request.form['frames'].encode(),
         'render_settings': request.form['render_settings'],
         'repo_path': request.form['repo_path'],
         'repo_type': request.form['repo_type'],
         'rev': request.form['rev'],
         'ssh_key_file': current_app.config['SSH_KEY_FILE'],
         'repo_source': current_app.config['REPO_SOURCE'],
-        'server_repo_path': request.form['server_repo_path']
+        'server_repo_path': request.form['server_repo_path'],
+        'shot_id': request.form['shot_id']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
