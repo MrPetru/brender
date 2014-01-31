@@ -126,6 +126,7 @@ def create_tables():
     Shots.create_table()
     Jobs.create_table()
     Settings.create_table()
+    Frames.create_table()
     # Snapshots.create_table()
 
 

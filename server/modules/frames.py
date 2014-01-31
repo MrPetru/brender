@@ -82,6 +82,8 @@ def dispatch_frames():
             
     if not shot:
         print("I don't know which of shot to run, please select one")
+        if worker.poweroff == 'poweroff':
+            shutdown(worker)
         return
 
     for worker in Workers.select().where((Workers.status == 'enabled') & (Workers.connection == 'online')):
@@ -108,8 +110,6 @@ def dispatch_frames():
             print('no more frames to render for shot=%s' % shot.shot_name)
             shot.status = 'complete'
             shot.save()
-            if worker.poweroff == 'poweroff':
-                shutdown(worker)
             return
         else:
             worker.status = 'busy'

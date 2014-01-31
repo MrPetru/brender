@@ -1,8 +1,6 @@
 
 # ============== start dender configutation and render process ===========
 
-bpy.context.user_preferences.system.compute_device_type = 'CUDA'
-bpy.context.user_preferences.system.compute_device = 'CUDA_0'
 
 import bpy
 import sys
@@ -11,6 +9,9 @@ import time
 from urllib import request
 from urllib.parse import urlencode
 import os
+
+bpy.context.user_preferences.system.compute_device_type = 'CUDA'
+bpy.context.user_preferences.system.compute_device = 'CUDA_0'
 
 # parse list of frames from command line arguments
 argv = sys.argv
