@@ -80,13 +80,18 @@ def dispatch_frames():
             shot = s
             break
             
-    if not shot:
-        print("I don't know which of shot to run, please select one")
-        if worker.poweroff == 'poweroff':
-            shutdown(worker)
-        return
+    # if not shot:
+    #     print("I don't know which of shot to run, please select one")
+    #     if worker.poweroff == 'poweroff':
+    #         shutdown(worker)
+    #     return
 
     for worker in Workers.select().where((Workers.status == 'enabled') & (Workers.connection == 'online')):
+        if not shot:
+            print("I don't know which of shot to run, please select one")
+            if worker.poweroff == 'poweroff':
+                shutdown(worker)
+            return
 
         frames_to_render = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'ready')).limit(shot.chunk_size)
         #frames_to_render = q.execute()
