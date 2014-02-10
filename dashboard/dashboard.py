@@ -457,10 +457,12 @@ def frames_index(shot):
             "6": val['paths']
             })
     show_id = val['show_id']
+    project_name = val['project_name']
+    shot_name = val['shot_name']
 
     entries = json.dumps(frames_list)
 
-    return render_template('frames.html', entries=entries, title='Frames', shot_id=shot, show_id=show_id)
+    return render_template('frames.html', entries=entries, title='Frames', shot_id=shot, show_id=show_id, project_name=project_name, shot_name=shot_name)
 
 @app.route('/frames/reset/<shot>', methods=['POST'])
 def frames_update(shot):

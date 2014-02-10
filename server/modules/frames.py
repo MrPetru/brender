@@ -10,6 +10,7 @@ from flask import (abort,
 from model import *
 from utils import *
 from modules.workers import *
+from flask import current_app
 
 frames_module = Blueprint('frames_module', __name__)
 
@@ -75,10 +76,15 @@ def dispatch_frames():
 
     for s in shots:
         frames_count = Frames.select().where(Frames.status == 'ready').count()
-        print("still frames to render = ", frames_count)
+        current_app.logger.debug("still frames to render = %d" % frames_count)
         if frames_count > 0:
+            current_app.logger.debug("shot to render is %s" % s.shot_name)
             shot = s
             break
+        else:
+            current_app.logger.debug('save shot as completed')
+            s.status = 'completed'
+            s.save()
             
     # if not shot:
     #     print("I don't know which of shot to run, please select one")
@@ -88,43 +94,46 @@ def dispatch_frames():
 
     for worker in Workers.select().where((Workers.status == 'enabled') & (Workers.connection == 'online')):
         if not shot:
-            print("I don't know which of shot to run, please select one")
+            current_app.logger.debug("there is no more shots to render")
+
             if worker.poweroff == 'poweroff':
                 shutdown(worker)
             return
 
-        frames_to_render = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'ready')).limit(shot.chunk_size)
-        #frames_to_render = q.execute()
-        print(shot.chunk_size)
-        #print(frames_to_render.count())
-        frame_list = []
-        for f in frames_to_render:
+        frame_list = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'ready')).limit(shot.chunk_size)
+        frames = []
+        for f in frame_list:
             print(f.frame)
             f.status = 'running'
             f.worker_id = worker.id
             f.worker_hostname = worker.hostname
-            frame_list.append(str(f.frame))
+            frames.append(str(f.frame))
         
         # save modifications to database
-        for f in frames_to_render:
+        for f in frame_list:
             f.save()
 
         print ('frame_list=', frame_list)
 
-        if not frame_list:
-            print('no more frames to render for shot=%s' % shot.shot_name)
-            shot.status = 'complete'
-            shot.save()
+        if not frames:
+            # print('no more frames to render for shot=%s' % shot.shot_name)
+            # shot.status = 'completed'
+            # shot.save()
+            worker.status = 'enabled'
+            worker.save()
+            current_app.logger.debug("no frames found to render, exit fron dispatch_frames")
             return
         else:
             worker.status = 'busy'
             worker.save()
-            render_frames(worker, shot, frame_list)
+            current_app.logger.debug("send render job to worker")
+            render_frames(worker, shot, frames)
 
 @frames_module.route('/frames/update/<shot_id>/<frame>', methods=['GET'])
 @frames_module.route('/frames/update/<shot_id>', methods=['POST'])
 def frames_update(shot_id, frame=None):
     if request.method == 'GET':
+        current_app.logger.debug("report done single frame")
         shot = Shots.get(Shots.id == shot_id)
         frame = Frames.get((Frames.shot_id == shot_id) & (Frames.frame == frame))
         frame.duration = request.args.get('time')
@@ -141,6 +150,7 @@ def frames_update(shot_id, frame=None):
         frame.save()
         return 'updated'
     elif request.method == 'POST':
+        current_app.logger.debug("report done single all frames")
         frames = request.form['frames']
         flist = frames.split(' ')
         frames = []
@@ -153,9 +163,16 @@ def frames_update(shot_id, frame=None):
         print(frames, shot_id)
         print('retcode = ', retcode, 'type of retcode=', type(retcode))
 
-        frames_list = Frames.select().where((Frames.shot_id == shot_id) & (Frames.frame in frames))
+        frames_list_query = Frames.select().where(Frames.shot_id == shot_id)
+        frames_list = []
+        for f in frames_list_query:
+            if f.frame in frames:
+                frames_list.append(f)
+                print("frame is =", f.frame)
+                
         worker_id = frames_list[0].worker_id
         worker = Workers.get(Workers.id == worker_id)
+        current_app.logger.debug("set worker status to enabled")
         worker.status = 'enabled'
         worker.save()
 
@@ -169,16 +186,18 @@ def frames_update(shot_id, frame=None):
         else:
             print('no error were found, continuig with next frames')
             #shot = Shots.get(Shots.id == shot_id)
-        
+        current_app.logger.debug("dispatch remaining frames")
         dispatch_frames()
+
+    current_app.logger.debug("exit from frames/update")
     return 'done'
 
 @frames_module.route('/frames/<shot_id>')
 def frames_index(shot_id):
     shot = Shots.get(Shots.id == shot_id)
-
+    show = Shows.get(Shows.id == shot.show_id)
     frames = {}
-    for frame in Frames.select().where(Frames.shot_id == shot_id):
+    for frame in Frames.select().where(Frames.shot_id == shot.id):
         paths = [p for p in frame.result_path.split(',')]
         frames[frame.id] = {
             "frame": frame.frame,
@@ -186,7 +205,9 @@ def frames_index(shot_id):
             "duration": "%.3fs" % (frame.duration or 0),
             "worker": frame.worker_hostname,
             "paths": paths,
-            "show_id": shot.show_id
+            "shot_name": shot.shot_name,
+            "show_id": shot.show_id,
+            "project_name": show.name
         }
 
     return jsonify(frames)

@@ -141,7 +141,7 @@ def shots_start():
 
         if shot.status == 'running':
             pass
-        elif shot.status in ['stopped', 'ready']:
+        elif shot.status in ['stopped', 'ready', 'completed']:
             shot.status = 'running'
             shot.save()
         dispatch_frames()
