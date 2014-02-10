@@ -75,7 +75,7 @@ def dispatch_frames():
     shot = None
 
     for s in shots:
-        frames_count = Frames.select().where(Frames.status == 'ready').count()
+        frames_count = Frames.select().where((Frames.shot_id == s.id) & (Frames.status == 'ready')).count()
         current_app.logger.debug("still frames to render = %d" % frames_count)
         if frames_count > 0:
             current_app.logger.debug("shot to render is %s" % s.shot_name)
