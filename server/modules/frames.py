@@ -84,13 +84,6 @@ def dispatch_frames():
         else:
             current_app.logger.debug('save shot as completed')
             s.status = 'completed'
-            s.save()
-            
-    # if not shot:
-    #     print("I don't know which of shot to run, please select one")
-    #     if worker.poweroff == 'poweroff':
-    #         shutdown(worker)
-    #     return
 
     for worker in Workers.select().where((Workers.status == 'enabled') & (Workers.connection == 'online')):
         if not shot:
@@ -224,9 +217,7 @@ def frames_reset(shot_id):
             frame.status = 'ready'
             frame.save()
     elif command == 'reset_failed':
-        frames = Frames.select().where((Frames.shot_id == shot_id) & (Frames.status == 'error'))
-        for f in frames:
-            f.status = 'ready'
-            f.save()
+        update_query = Frames.update(status='ready').where((Frames.shot_id == shot_id) & (Frames.status == 'error'))
+        update_query.execute()
 
     return 'done'

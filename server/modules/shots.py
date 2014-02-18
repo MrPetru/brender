@@ -142,8 +142,8 @@ def shots_start():
         if shot.status == 'running':
             pass
         elif shot.status in ['stopped', 'ready', 'completed']:
-            shot.status = 'running'
-            shot.save()
+            update_query = Shots.update(status='running').where(Shots.id==shot.id)
+            update_query.execute()
         dispatch_frames()
 
         # if shot.status != 'running':
@@ -195,11 +195,8 @@ def shots_reset():
         if shot.status == 'running':
             return 'Shot %d is running' % shot_id
         else:
-            frames = Frames.select().where(Frames.shot_id == shot.id)
-            for f in frames:
-                f.status = 'ready'
-                f.worker_id = None
-                f.save()
+            update_query = Frames.update(status='ready', worker_id=None).where(Frames.shot_id == shot.id)
+            update_query.execute()
 
             shot.current_frame = shot.frame_start
             shot.status = 'ready'
@@ -261,9 +258,8 @@ def shots_delete():
     shot_ids = request.form['id']
     shots_list = list_integers_string(shot_ids)
     for shot_id in shots_list:
-        frames = Frames.select().where(Frames.shot_id == shot_id)
-        for f in frames:
-            f.delete_instance()
+        delete_query = Frames.delete().where(Frames.shot_id == shot_id)
+        delete_query.execute()
 
         shot = Shots.get(Shots.id == shot_id)
 
