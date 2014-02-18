@@ -65,14 +65,15 @@ def output_frame_path(frame=None):
         frame = bpy.context.scene.frame_current
         
     paths = []
-    for n in bpy.context.scene.node_tree.nodes:
-        if n.type == 'OUTPUT_FILE':
-            for s in n.file_slots:
-                fileNameExpanded = expand_padding(s.path)
-                ext = format_to_ext[s.format.file_format]
-                
-                fileName = "%s.%s" % (fileNameExpanded, ext)
-                paths.append(os.path.join(n.base_path, fileName % frame))
+    if hasattr(bpy.context.scene, 'node_tree') and bpy.context.scene.node_tree:
+        for n in bpy.context.scene.node_tree.nodes:
+            if n.type == 'OUTPUT_FILE':
+                for s in n.file_slots:
+                    fileNameExpanded = expand_padding(s.path)
+                    ext = format_to_ext[s.format.file_format]
+                    
+                    fileName = "%s.%s" % (fileNameExpanded, ext)
+                    paths.append(os.path.join(n.base_path, fileName % frame))
             
     return paths
 
