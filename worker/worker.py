@@ -254,9 +254,6 @@ def run_blender_in_thread(options):
                 logger.info("Running %s" % render_command)
 
                 process = subprocess.Popen(render_command,
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-                process = subprocess.Popen(render_command,
                                            stdout=shotLog_file,
                                            stderr=shotLog_file)
                 #flask.g.blender_process = process
