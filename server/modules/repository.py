@@ -10,6 +10,9 @@ from workers import *
 import time
 import subprocess
 
+from mingmodel import session, Shows
+from bson import ObjectId
+
 repo_module = Blueprint('repo_module', __name__)
 
 @repo_module.route('/repo/')
@@ -21,7 +24,7 @@ def repo_checkout(show_id, rev):
     if not show_id or not rev:
         return 'version checkout with errors'
 
-    show = Shows.get(Shows.id == show_id)
+    show = Shows.query.find({'_id' : ObjectId(show_id)}).first()
     path = show.path_server
     if show.repo_type == 'mercurial':
         from mercurial import ui, hg, commands
@@ -40,11 +43,11 @@ def repo_checkout(show_id, rev):
 @repo_module.route('/repo/revisions/<show_id>')
 def repo_revisions(show_id):
     print(show_id)
-    if not show_id:
+    if not show_id or show_id == 'null':
         return jsonify({'revisions':[], 'message':'no show id were provided'})
-        
+
     if request.method == 'GET':
-        show = Shows.get(Shows.id == show_id)
+        show = Shows.query.find({'_id' : ObjectId(show_id)}).first()
         path = show.path_server
 
         if show.repo_type == 'mercurial':

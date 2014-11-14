@@ -4,8 +4,9 @@ import os
 from os import listdir
 from os.path import isfile, isdir, join, abspath, dirname
 
-from model import *
-from jobs import *
+#from model import *
+#from jobs import *
+from jobs import create_jobs, create_job, delete_jobs, stop_jobs
 from utils import *
 from frames import dispatch_frames
 
@@ -13,23 +14,27 @@ import subprocess
 import time
 import shutil
 
+from mingmodel import Shots, session, Shows, Frames
+from bson import ObjectId
+
 shots_module = Blueprint('shots_module', __name__)
 
 
 def delete_shot(shot_id):
-    try:
-        shot = Shots.get(Shots.id == shot_id)
-    except Shots.DoesNotExist:
-        print('[error] Shot not found')
-        return 'error'
-    shot.delete_instance()
+
+    Shots.query.remove({'_id' : ObjectId(shot_id)})
+    #if not shot:
+    #    #print('[error] Shot not found')
+    #    return 'error'
+
+    session.flush()
     print('[info] Deleted shot', shot_id)
 
 
 @shots_module.route('/shots/')
 def shots():
     shots = {}
-    for shot in Shots.select():
+    for shot in Shots.query.find({}).all():
         # percentage_done = 0
         # frame_count = shot.frame_end - shot.frame_start + 1
         # current_frame = shot.current_frame - shot.frame_start + 1
@@ -38,7 +43,7 @@ def shots():
 
         # get count of completed jobs and not
         total = shot.frame_end - shot.frame_start + 1
-        finished = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'done')).count()
+        finished = Frames.query.find({'shot_id' : shot._id, 'status' : 'done'}).count()
 
         if finished > 0:
             percentage_done = round((float(finished)  / float(total)) * 100.0, 1)
@@ -48,10 +53,10 @@ def shots():
         if percentage_done == 100:
             shot.status = 'completed'
 
-        show = Shows.get(Shows.id == shot.show_id)
+        show = Shows.query.find({'_id' : shot.show_id}).first()
         project_name = show.name
 
-        shots[shot.id] = {"frame_start": shot.frame_start,
+        shots[shot._id.__str__()] = {"frame_start": shot.frame_start,
                           "frame_end": shot.frame_end,
                           "current_frame": shot.current_frame,
                           "status": shot.status,
@@ -78,7 +83,7 @@ def shots_browse(path):
     #snapshot = Snapshots.select().where(Snapshots.id == snapshot_id).get()
 
     #active_show = Settings.get(Settings.name == 'active_show')
-    active_show = Shows.get(Shows.id == show_id)
+    active_show = Shows.query.find({'_id' : ObjectId(show_id)}).first()
 
     # path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # render_settings_path = os.path.join(path, 'render_settings/')
@@ -122,7 +127,7 @@ def shot_update():
     status = request.form['status']
     # TODO parse
     shot_ids = request.form['id']
-    shots_list = list_integers_string(shot_ids)
+    shots_list = stringToList(shot_ids)
     for shot_id in shots_list:
         print("updating shot %s = %s " % (shot_id, status))
     return "TEMP done updating shots "
@@ -131,20 +136,29 @@ def shot_update():
 @shots_module.route('/shots/start', methods=['POST'])
 def shots_start():
     shot_ids = request.form['id']
-    shots_list = list_integers_string(shot_ids)
+    shots_list = stringToList(shot_ids)
     for shot_id in shots_list:
-        try:
-            shot = Shots.get(Shots.id == shot_id)
-        except Shots.DoesNotExist:
+
+        shot = Shots.query.find({'_id' : ObjectId(shot_id)}).first()
+        if not shot:
             print('[error] Shot not found')
             return 'Shot %d not found' % shot_id
+
+        if not shot:
+            return 'Shot not found'
 
         if shot.status == 'running':
             pass
         elif shot.status in ['stopped', 'ready', 'completed']:
-            update_query = Shots.update(status='running').where(Shots.id==shot.id)
-            update_query.execute()
+            update_query = Shots.query.update({'_id' : shot._id}, {'$set' : {'status' : 'running'}})
+            #update_query.execute()
+            session.flush()
+
         dispatch_frames()
+        #if shot.job_type == 'render':
+        #    dispatch_frames()
+        #elif shot.job_type == 'bake':
+        #    dispatch_bake_job()
 
         # if shot.status != 'running':
         #     shot.status = 'running'
@@ -160,21 +174,24 @@ def shots_start():
 @shots_module.route('/shots/stop', methods=['POST'])
 def shots_stop():
     shot_ids = request.form['id']
-    shots_list = list_integers_string(shot_ids)
+    shots_list = stringToList(shot_ids)
     for shot_id in shots_list:
         print '[info] Working on shot', shot_id
         # first we delete the associated jobs (no foreign keys)
         try:
-            shot = Shots.get(Shots.id == shot_id)
+            shot = Shots.query.find({'_id' : ObjectId(shot_id)}).first()
         except Shots.DoesNotExist:
             print('[error] Shot not found')
             return 'Shot %d not found' % shot_id
+        if not shot:
+            return 'Shot not found'
 
         if not shot.status in ['stopped', 'error']:
-            stop_jobs(shot.id)
+            stop_jobs(shot._id)
             shot.status = 'stopped'
-            shot.save()
+            session.flush()
 
+    session.clear()
     return jsonify(
         shot_ids=shot_ids,
         status='stopped')
@@ -183,28 +200,53 @@ def shots_stop():
 @shots_module.route('/shots/reset', methods=['POST'])
 def shots_reset():
     shot_ids = request.form['id']
-    shots_list = list_integers_string(shot_ids)
+    shots_list = stringToList(shot_ids)
+
+    shots_to_delete_frames = []
     for shot_id in shots_list:
         try:
-            shot = Shots.get(Shots.id == shot_id)
+            shot = Shots.query.find({'_id' : ObjectId(shot_id)}).first()
         except Shots.DoesNotExist:
             shot = None
             print('[error] Shot not found')
             return 'Shot %d not found' % shot_id
 
+        if not shot:
+            return 'Shot not found'
+
         if shot.status == 'running':
             return 'Shot %d is running' % shot_id
         else:
-            update_query = Frames.update(status='ready', worker_id=None).where(Frames.shot_id == shot.id)
-            update_query.execute()
+            shots_to_delete_frames.append(shot._id)
+
+
+            """
+            For some reason updateting frames here will not work. So we delete all frames for
+            respective shot and then we will recreate them.
+            """
+            #Frames.query.update({'shot_id' : shot._id}, {'$set' : {'status' : 'ready'}})
+            Frames.query.remove({'shot_id' : shot._id})
+
+            # create frames entries
+            for f in range(shot.frame_start, shot.frame_end + 1):
+                fr = Frames()
+                fr.frame=f
+                fr.shot_id=shot._id
+                fr.status='ready'
+
+            #print(Frames.query.find({'shot_id' : shot._id}).count())
 
             shot.current_frame = shot.frame_start
             shot.status = 'ready'
-            shot.save()
+            #shot.save()
 
-            delete_jobs(shot.id)
+            delete_jobs(shot._id)
             create_jobs(shot)
 
+        session.flush()
+
+    session.flush()
+    session.clear()
     return jsonify(
         shot_ids=shots_list,
         status='ready')
@@ -220,27 +262,33 @@ def shot_add():
     snapshot_id = request.form['snapshot_id']
     print(snapshot_id)
 
-    shot = Shots.create(
-        attract_shot_id=1,
-        show_id=int(request.form['show_id']),
-        frame_start=int(request.form['frame_start']),
-        frame_end=int(request.form['frame_end']),
-        chunk_size=int(request.form['chunk_size']),
-        current_frame=int(request.form['frame_start']),
-        filepath=request.form['filepath'],
-        shot_name=request.form['shot_name'],
-        render_settings=request.form['render_settings'],
-        status='ready',
-        priority=10,
-        owner='fsiddi',
-        snapshot_id=snapshot_id)
+    shot = Shots()
+    shot.attract_shot_id=None
+    shot.show_id=ObjectId(request.form['show_id'])
+    shot.frame_start=int(request.form['frame_start'])
+    shot.frame_end=int(request.form['frame_end'])
+    shot.chunk_size=int(request.form['chunk_size'])
+    shot.current_frame=int(request.form['frame_start'])
+    shot.filepath=request.form['filepath']
+    shot.shot_name=request.form['shot_name']
+    shot.render_settings=request.form['render_settings']
+    shot.status='ready'
+    shot.priority=10
+    shot.owner='fsiddi'
+    shot.snapshot_id=snapshot_id
+    shot.job_type=request.form['job_type']
 
+    if shot.job_type == 'bake':
+        shot.frame_start = 1
+        shot.frame_end = 1
+
+    #if shot.job_type ==  'render':
     # create frames entries
     for f in range(shot.frame_start, shot.frame_end + 1):
-        Frames.create(
-            frame=f,
-            shot_id=shot.id,
-            status='ready')
+        fr = Frames()
+        fr.frame=f
+        fr.shot_id=shot._id
+        fr.status='ready'
 
     print('parsing shot to create jobs')
 
@@ -250,22 +298,32 @@ def shot_add():
 
     #dispatch_jobs(shot.id)
 
+    #elif shot.job_type == 'bake':
+    #    # don't create frames
+    #    # don't create more than one job
+    #    create_job(shot._id, 1, 1)
+
+    #else:
+    #    print('unknown job type %s' % shot.job_type)
+
+    session.flush()
+    session.clear()
     return 'done'
 
 
 @shots_module.route('/shots/delete', methods=['POST'])
 def shots_delete():
     shot_ids = request.form['id']
-    shots_list = list_integers_string(shot_ids)
+    shots_list = stringToList(shot_ids)
     for shot_id in shots_list:
-        delete_query = Frames.delete().where(Frames.shot_id == shot_id)
-        delete_query.execute()
+        delete_query = Frames.query.remove({'shot_id' : ObjectId(shot_id)})
+        #delete_query.execute()
 
-        shot = Shots.get(Shots.id == shot_id)
+        shot = Shots.query.find({'_id' : ObjectId(shot_id)}).first()
 
         print('working on', shot_id, '-', str(type(shot_id)))
         # first we delete the associated jobs (no foreign keys)
-        delete_jobs(shot_id)
+        delete_jobs(shot._id)
         # then we delete the shot
-        delete_shot(shot_id)
+        delete_shot(shot._id)
     return 'done'

@@ -286,7 +286,7 @@ def shots_add():
             snapshot_id = ''
 
         shot_values = {
-            'attract_shot_id': 1,
+            'attract_shot_id': None,
             'show_id': request.form['show_id'],
             'shot_name': request.form['shot_name'],
             'frame_start': request.form['frame_start'],
@@ -298,7 +298,8 @@ def shots_add():
             'status': 'running',
             'priority': 10,
             'owner': 'fsiddi',
-            'snapshot_id': snapshot_id
+            'snapshot_id': snapshot_id,
+            'job_type': request.form['job_type']
         }
 
         http_request(BRENDER_SERVER, '/shots/add', shot_values)
@@ -442,7 +443,7 @@ def frames_index(shot):
     frames = json.loads(frames)
     frames_list = []
 
-    
+
 
     for key, val in frames.iteritems():
         val['checkbox'] = '<input type="checkbox" value="' + key + '" />'

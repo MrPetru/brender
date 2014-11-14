@@ -5,8 +5,10 @@ from os import listdir
 from os.path import isfile, join, abspath, dirname
 from flask import Blueprint, render_template, abort, jsonify, request
 
-from model import *
+#from model import *
 from utils import *
+
+from mingmodel import session, Workers, Frames, Settings, getJson
 
 settings_module = Blueprint('settings_module', __name__)
 
@@ -14,28 +16,32 @@ settings_module = Blueprint('settings_module', __name__)
 @settings_module.route('/settings/')
 def settings():
     settings = {}
-    for setting in Settings.select():
+    for setting in Settings.query.find({}).all():
         settings[setting.name] = setting.value
-   
+
+    #return jsonify(getJson(settings))
     return jsonify(settings)
 
 
 @settings_module.route('/settings/update', methods=['POST'])
 def settings_update():
     for setting_name in request.form:
-        try:
-            setting = Settings.get(Settings.name == setting_name)
+
+        setting = Settings.query.find({'name' :  setting_name}).first()
+        if setting:
             setting.value = request.form[setting_name]
-            setting.save()
+            #setting.save()
             print('[Debug] Updating %s %s') % \
             (setting_name, request.form[setting_name])
-        except Settings.DoesNotExist:
-            setting = Settings.create(
-                name=setting_name,
-                value=request.form[setting_name])
-            setting.save()
+        else:
+            setting = Settings()
+            setting.name=setting_name
+            setting.value=request.form[setting_name]
+            #setting.save()
             print('[Debug] Creating %s %s') % \
             (setting_name, request.form[setting_name])
+
+        session.flush()
     return 'done'
 
 
@@ -43,7 +49,7 @@ def settings_update():
 @settings_module.route('/settings/<setting_name>')
 def get_setting(setting_name):
     try:
-        setting = Settings.get(Settings.name == setting_name)
+        setting = Settings.query.find({'name' : setting_name}).first()
         print('[Debug] Get Settings %s %s') % (setting.name, setting.value)
     except Exception, e:
         print(e, '--> Setting not found')

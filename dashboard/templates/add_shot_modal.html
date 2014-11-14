@@ -60,6 +60,15 @@
     </div>
     <div class="col-md-6">
         <div class="form-group">
+          <label for="job_type">Job Type</label>
+					<select name="job_type" id="job_type" class="form-control">
+						<option value="render">render</option>
+						<option value="bake">bake</option>
+					</select>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
           <label for="render_settings">Render settings</label>
           <select name="render_settings" class="form-control">
             {% for file in render_settings['settings_files'] %}
@@ -89,7 +98,7 @@
           <input type="text" class="form-control" id="chunk_size" name="chunk_size" value="5" required="">
         </div>
     </div>
-  </div>       
+  </div>
 </form>
 
 <script>
@@ -142,9 +151,9 @@
       window.show_id = $('#show_id')[0].value;
       window.snapshot_id = $('#snapshot_id')[0].value;
       $.post('/shots/browse/', {show_id:window.show_id, snapshot_id:window.snapshot_id}, function(data) {
-        $('.modal-body').html(data); 
+        $('.modal-body').html(data);
       });
-      
+
       $('.modal-footer').children('.btn-primary').text('Select');
       $('.modal-footer').children('.btn-primary').addClass('select-file');
     });

@@ -14,7 +14,7 @@ argv = argv[argv.index("--") + 1:]
 parser = argparse.ArgumentParser(description="read arguments passed from brender")
 
 parser.add_argument('-f', '--frames', type=str)
-parser.add_argument('-sh', '--shot', type=int)
+parser.add_argument('-sh', '--shot', type=str)
 parser.add_argument('-s', '--server', type=str)
 args = parser.parse_args(argv)
 

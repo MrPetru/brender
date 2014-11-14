@@ -1,20 +1,20 @@
-import socket
-import urllib
-import time
-import sys
-import subprocess
+from flask import Flask, redirect, url_for, request, jsonify
+from flask import current_app
+from threading import Thread
+from uuid import getnode as get_mac_address
+import flask
+import gocept.cache.method
+import os
 import platform
 import psutil
-import flask
-import os
+import requests
 import select
-import gocept.cache.method
-from threading import Thread
-from flask import Flask, redirect, url_for, request, jsonify
-from uuid import getnode as get_mac_address
-from flask import current_app
+import socket
+import subprocess
+import sys
 import tempfile
-import json
+import time
+
 
 # instance_relative_config is used later to load configuration from path relative to this file
 app = Flask(__name__, instance_relative_config=True)
@@ -36,55 +36,53 @@ if (len(sys.argv) > 1):
 else:
     PORT = 5000
 
-def http_request(command, values, message=''):
-    params = urllib.urlencode(values)
+def serverPost(command, values, message=''):
+    """Make a POST request to the server.
+
+    Values should be a dictionary to be used as payload to de post request.
+    """
+
+    if not values:
+        values = {}
+
     try:
-        urllib.urlopen(BRENDER_SERVER + '/' + command, params)
-    except IOError:
-        if message:
-            logger.warning("%s" % message)
-        else:
-            logger.warning("Could not connect to server")
+        requests.post("%s/%s" % (BRENDER_SERVER, command), values)
+        return True
+    except e:
+        logger.error("ServerPost with data: \nSERVER=%s\ncommand=%s\nvalues=%s" % (BRENDER_SERVER, command, values.__str__()))
+        return False
 
-def http_request_get(command):
+def serverGet(command):
     try:
-        return urllib.urlopen(BRENDER_SERVER + '/' + command).read()
-    except IOError:
-        if message:
-            logger.warning("%s" % message)
-        else:
-            logger.warning("Could not connect to server")
-        return None
-
-
-# this is going to be an HTTP request to the server with all the info
-# for registering the render node
-def register_worker():
-    import httplib
-    while True:
-        try:
-            connection = httplib.HTTPConnection('127.0.0.1', PORT)
-            connection.request("GET", "/info")
-            break
-        except socket.error:
-            pass
-        time.sleep(0.1)
-
-    http_request('connect', {'mac_address': MAC_ADDRESS,
-                                       'port': PORT,
-                                       'hostname': HOSTNAME,
-                                       'system': SYSTEM})
+        response = requests.get("%s/%s" % (BRENDER_SERVER, command))
+        data = response.json()
+        return data
+    except:
+        logger.error("ServerGet with data: \nSERVER=%s\ncommand=%s" % (BRENDER_SERVER, command))
+        return {}
 
 
 # we use muliprocessing to register the client the worker to the server
 # while the worker app starts up
 def start_worker():
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        register_thread = Thread(target=register_worker)
-        register_thread.setDaemon(False)
-        register_thread.start()
 
-    app.run(host='0.0.0.0')
+    registered = serverPost('connect', {'mac_address': MAC_ADDRESS,
+                                   'port': PORT,
+                                   'hostname': HOSTNAME,
+                                   'system': SYSTEM})
+
+    if registered:
+        """ if application is loaded in debug mode it will execute this function
+        twice when application will start. And as consequence, it will register
+        twice to the server and some times will bring to having worker working
+        with two chunks of frames.
+        So we set reloader to false.
+        """
+        app.run(host='0.0.0.0', use_reloader=False)
+    else:
+        logger.error("Unable to register this worker")
+
+    logger.info("Exit.")
 
 
 def _checkProcessOutput(process):
@@ -129,126 +127,172 @@ def info():
                    hostname=HOSTNAME,
                    system=SYSTEM)
 
+def handleMercurialRepo():
+    from mercurial import hg, ui, commands
+    from mercurial.error import RepoError
+
+    ssh_key_file = options['ssh_key_file'].encode()
+    source = (options['repo_source'] + options['server_repo_path']).encode()
+    try:
+        repo = hg.repository(ui.ui(), options['repo_path'].encode())
+    except RepoError:
+        if ssh_key_file:
+            commands.clone(ui.ui(), source, dest=options['repo_path'].encode(), ssh="ssh -i %s" % ssh_key_file)
+        else:
+            commands.clone(ui.ui(), source, dest=options['repo_path'].encode())
+        repo = hg.repository(ui.ui(), options['repo_path'].encode())
+
+    if ssh_key_file:
+        try:
+            commands.pull(ui.ui(), repo, source=source, ssh="ssh -i %s" % ssh_key_file)
+        except RepoError:
+            shotLog_file.write("cannot get interface to repo")
+            retcode = 1001
+    else:
+        try:
+            commands.pull(ui.ui(), repo, source=source)
+        except RepoError:
+            shotLog_file.write("cannot get interface to repo")
+            retcode = 1001
+
+    if retcode == 0:
+        commands.update(ui.ui(), repo, rev=options['rev'])
+
+    return retcode
+
+def handleShared(options):
+    # we will do some check or configuration here for normal shared projects
+    return 0
+
+def generateRenderCommand(options):
+    print(options)
+    print('has job type ', options.has_key('job_type'))
+
+    if options.has_key('job_type') and options['job_type'] == 'render':
+        render_command = [
+            options['blender_path'],
+            '--background',
+            options['file_path'],
+            '--python',
+            options['render_settings'],
+            '--enable-autoexec',
+            '--',
+            '--frames',
+            options['frames'],
+            '--server',
+            BRENDER_SERVER,
+            '--shot',
+            options['shot_id']
+            ]
+        return render_command
+
+    if options.has_key('job_type') and options['job_type'] == 'bake':
+        render_command = [
+            options['blender_path'],
+            '--background',
+            options['file_path'],
+            '--python',
+            options['render_settings'],
+            '--enable-autoexec'
+            ]
+        return render_command
+
+    return None
 
 def run_blender_in_thread(options):
     """We build the command to run blender in a thread
+
+    There are many job types:
+        render cpu
+        render gpu
+        bake smoke
+        bake fluid
+        run script
     """
+
+    # save log content to disk
+    shotLog_file = open("shot_%s.log" % options['shot_id'], 'a')
 
     retcode = 0
     full_output = ''
 
     # get content of render config file from server and save it to the worker tmp  position
     # this situation is useful when a worker can't have a shared resource with server
-    logger.info("get render config data")
-    result = json.loads(http_request_get('render-settings/%s' % options['render_settings']))
-    if result:
+    logger.info("Get render confing file content from server.")
+    result = serverGet('render-settings/%s' % options['render_settings'])
+
+    if result and result.has_key('text'):
         content = result['text']
-        tmpf = tempfile.NamedTemporaryFile(mode='w', delete=True, suffix='.py')
-        options['render_settings'] = tmpf.name
-        f = tmpf.file
+        tmpConfigFile = tempfile.NamedTemporaryFile(mode='w', delete=True, suffix='.py')
+        options['render_settings'] = tmpConfigFile.name
+        f = tmpConfigFile.file
         f.write(content)
         f.close()
     else:
-        full_output += "can't get render config file"
+        shotLog_file.write("can't get render config file")
         retcode = 1002
 
+    # do some stuff when repo type is mercurial
     if options['repo_type'] == 'mercurial':
-        from mercurial import hg, ui, commands
-        from mercurial.error import RepoError
+        retcode = handleMercurialRepo(options)
 
-        ssh_key_file = options['ssh_key_file'].encode()
-        source = (options['repo_source'] + options['server_repo_path']).encode()
-        try:
-            repo = hg.repository(ui.ui(), options['repo_path'].encode())
-        except RepoError:
-            if ssh_key_file:
-                commands.clone(ui.ui(), source, dest=options['repo_path'].encode(), ssh="ssh -i %s" % ssh_key_file)
-            else:
-                commands.clone(ui.ui(), source, dest=options['repo_path'].encode())
-            repo = hg.repository(ui.ui(), options['repo_path'].encode())
-
-        if ssh_key_file:
-            try:
-                commands.pull(ui.ui(), repo, source=source, ssh="ssh -i %s" % ssh_key_file)
-            except RepoError:
-                full_output += 'cannot get interface to repo'
-                retcode = 1001
-        else:
-            try:
-                commands.pull(ui.ui(), repo, source=source)
-            except RepoError:
-                full_output += 'cannot get interface to repo'
-                retcode = 1001
-
-        if retcode == 0:
-            commands.update(ui.ui(), repo, rev=options['rev'])
-
-    if retcode != 0:
-        status = 'error'
     else:
+        retcode = handleShared(options)
+        logger.debug("Handle project with non version control, a shared folder.")
+
+    if retcode == 0:
 
         if os.path.isfile(options['file_path']):
 
-            render_command = [
-                options['blender_path'],
-                '--background',
-                options['file_path'],
-                '--python',
-                options['render_settings'],
-                '--enable-autoexec',
-                '--',
-                '--frames',
-                options['frames'],
-                '--server',
-                BRENDER_SERVER,
-                '--shot',
-                options['shot_id']
-                ]
-
-            logger.info("Running %s" % render_command)
-
-            process = subprocess.Popen(render_command,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-            #flask.g.blender_process = process
-            #process.wait()
-            (stdout_msg, error_msg) = process.communicate()
-            retcode = process.returncode
-            full_output += stdout_msg + '\n*********** encountered errors ***********\n' + error_msg
-            #(retcode, full_output) = _interactiveReadProcess(process, options["job_id"])
-            #flask.g.blender_process = None
-            # print(full_output)
-
-            logger.info(full_output)
-            logger.info("return code is %s" % retcode)
-
-            if retcode == 0:
-                status = 'finished'
-            else:
+            render_command = generateRenderCommand(options)
+            if render_command == None:
                 status = 'error'
+                retcode = 1003
+                logger.debug("No render command was generated")
+            else:
+
+                logger.info("Running %s" % render_command)
+
+                process = subprocess.Popen(render_command,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                process = subprocess.Popen(render_command,
+                                           stdout=shotLog_file,
+                                           stderr=shotLog_file)
+                #flask.g.blender_process = process
+                #process.wait()
+                (stdout_msg, error_msg) = process.communicate()
+                retcode = process.returncode
+                #shotLog_file.write(stdout_msg + '\n*********** encountered errors ***********\n' + error_msg)
+                #(retcode, full_output) = _interactiveReadProcess(process, options["job_id"])
+                #flask.g.blender_process = None
+
+                logger.info("return code is %s" % retcode)
+
+                if retcode == 0:
+                    status = 'finished'
+                else:
+                    status = 'error'
         else:
             status = 'error'
-            full_output += 'supplied file %s doesn\'t exist\n' % options['file_path']
-            logger.error(full_output)
+            shotLog_file.write("supplied file %s doesn't exist\n" % options['file_path'])
             retcode = 0
 
-    # with open('log.log', 'w') as f:
-        # f.write(full_output)
+    if retcode != 0:
+        status = 'error'
 
-    # cleaning, close tmp file and it will be deleted in automatic
+    # close log file
+    shotLog_file.close()
+
+    # cleaning, close tmp file and it will be deleted
     if result:
-        tmpf.close()
+        tmpConfigFile.close()
 
-    http_request('frames/update/%s' % options['shot_id'], {'frames': options['frames'],
+    # report chunk outcome to server
+    serverPost('frames/update/%s' % options['shot_id'], {'frames': options['frames'],
                                     'status': status,
                                     'full_output': full_output,
                                     'retcode': retcode})
-
-    # http_request('jobs/update', {'id': options['job_id'],
-    #                                 'status': status,
-    #                                 'full_output': full_output,
-    #                                 'retcode': retcode})
-
 
 @app.route('/execute_job', methods=['POST'])
 def execute_job():
@@ -263,7 +307,8 @@ def execute_job():
         'ssh_key_file': current_app.config['SSH_KEY_FILE'],
         'repo_source': current_app.config['REPO_SOURCE'],
         'server_repo_path': request.form['server_repo_path'],
-        'shot_id': request.form['shot_id']
+        'shot_id': request.form['shot_id'],
+        'job_type' : request.form['job_type']
     }
 
     render_thread = Thread(target=run_blender_in_thread, args=(options,))
@@ -274,7 +319,7 @@ def execute_job():
 
 @app.route('/update', methods=['POST'])
 def update():
-    print('updating')
+    logger.debug('updating')
     blender_process = flask.g.get("blender_process")
     if blender_process:
         blender_process.kill()
@@ -289,7 +334,7 @@ def online_stats(system_stat):
             if find_blender_process:
                 for process in find_blender_process:
                     cpu.append(process.get_cpu_percent())
-                    print sum(cpu)
+                    logger.debug(sum(cpu))
                     return round(sum(cpu), 2)
             else:
                 return int(0)
@@ -363,7 +408,7 @@ def get_system_load_less_frequent():
 
 @app.route('/run_info')
 def run_info():
-    print('[Debug] get_system_load for %s') % HOSTNAME
+    logger.debug("get_system_load for %s" % HOSTNAME)
 
     return jsonify(mac_address=MAC_ADDRESS,
                    hostname=HOSTNAME,

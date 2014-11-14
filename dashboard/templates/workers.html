@@ -32,7 +32,7 @@
         $("div.toolbar").html('Custom tool bar! Text/images etc.');
 
 
-        $(document).on("click", "#workers-enable, #workers-disable, #workers-poweroff", function() {
+        $(document).on("click", "#workers-enable, #workers-disable, #workers-poweroff, #workers-bake", function() {
 
             var workers = new Array();
 
@@ -117,6 +117,7 @@
                 <li><a href="#" id="workers-enable" status="enabled">Enable</a></li>
                 <li><a href="#" id="workers-delete">Delete</a></li>
                 <li><a href="#" id="workers-poweroff" status="poweroff">Poweroff at THE END</a></li>
+                <li><a href="#" id="workers-bake" status="baking">Only bake</a></li>
                 <li class="divider"></li>
                 <li><a href="#" id="workers-restart">Restart</a></li>
               </ul>

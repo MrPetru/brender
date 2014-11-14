@@ -7,21 +7,26 @@ from flask import (abort,
                    request)
 
 # TODO(sergey): Generally not a good idea to import *
-from model import *
+#from model import *
 from utils import *
 from workers import *
+from mingmodel import session, Jobs, Shots, Shows
 
 jobs_module = Blueprint('jobs_module', __name__)
 
 
 def create_job(shot_id, chunk_start, chunk_end):
-    Jobs.create(shot_id=shot_id,
-                worker_id=12,
-                chunk_start=chunk_start,
-                chunk_end=chunk_end,
-                current_frame=chunk_start,
-                status='ready',
-                priority=50)
+    job = Jobs()
+    job.shot_id=shot_id
+    job.worker_id=None
+    job.chunk_start=chunk_start
+    job.chunk_end=chunk_end
+    job.current_frame=chunk_start
+    job.status='ready'
+    job.priority=50
+
+    session.flush()
+    session.clear()
 
 
 def create_jobs(shot):
@@ -37,9 +42,9 @@ def create_jobs(shot):
         chunk_end = shot.frame_start + shot.chunk_size - 1
 
         for chunk in range(total_chunks):
-            print('making chunk for shot', shot.id)
+            print('making chunk for shot', shot._id)
 
-            create_job(shot.id, chunk_start, chunk_end)
+            create_job(shot._id, chunk_start, chunk_end)
 
             chunk_start = chunk_end + 1
             chunk_end = chunk_start + shot.chunk_size - 1
@@ -47,7 +52,7 @@ def create_jobs(shot):
     elif shot_chunks_remainder == shot.chunk_size:
         print('we have 1 chunk only')
 
-        create_job(shot.id, shot.frame_start, shot.frame_end)
+        create_job(shot._id, shot.frame_start, shot.frame_end)
 
     #elif shot_chunks_remainder > 0 and \
     #     shot_chunks_remainder < shot.chunk_size:
@@ -61,15 +66,17 @@ def create_jobs(shot):
         chunk_end = shot.frame_start + shot.chunk_size - 1
 
         for chunk in range(total_chunks - 1):
-            print('making chunk for shot', shot.id)
+            print('making chunk for shot', shot._id)
 
-            create_job(shot.id, chunk_start, chunk_end)
+            create_job(shot._id, chunk_start, chunk_end)
 
             chunk_start = chunk_end + 1
             chunk_end = chunk_start + shot.chunk_size - 1
 
         chunk_end = chunk_start + shot_chunks_remainder - 1
-        create_job(shot.id, chunk_start, chunk_end)
+        create_job(shot._id, chunk_start, chunk_end)
+
+    session.flush()
 
 
 def start_job(worker, job):
@@ -78,17 +85,15 @@ def start_job(worker, job):
     way to get the additional shot information - should be done with join)
     """
 
-    shot = Shots.get(Shots.id == job.shot_id)
-    show = Shows.get(Shows.id == shot.show_id)
+    shot = Shots.query.find({'_id' : job.shot_id}).first()
+    show = Shows.query.find({'_id' : shot.show_id}).first()
     #snapshot = Snapshots.get(Snapshots.id == shot.snapshot_id)
 
     filepath = shot.filepath
 
     if 'Darwin' in worker.system:
-        setting_blender_path = Settings.get(
-            Settings.name == 'blender_path_osx')
-        setting_render_settings = Settings.get(
-            Settings.name == 'render_settings_path_osx')
+        setting_blender_path = Settings.query.find({'name' : 'blender_path_osx'}).first()
+        setting_render_settings = Settings.query.find({'name' : 'render_settings_path_osx'}).first()
 
         repo_path = show.path_osx
         rev = shot.snapshot_id
@@ -96,10 +101,8 @@ def start_job(worker, job):
 
         filepath = os.path.join(show.path_osx, shot.filepath)
     else:
-        setting_blender_path = Settings.get(
-            Settings.name == 'blender_path_linux')
-        setting_render_settings = Settings.get(
-            Settings.name == 'render_settings_path_linux')
+        setting_blender_path = Settings.query.find({'name' : 'blender_path_linux'}).first()
+        setting_render_settings = Settings.query.find({'name' : 'render_settings_path_linux'}).first()
 
         repo_path = show.path_linux
         rev = shot.snapshot_id
@@ -122,14 +125,14 @@ def start_job(worker, job):
                       'post-run': 'clear variables, empty /tmp'}
     """
 
-    params = {'job_id': job.id,
+    params = {'job_id': job._id.__str__(),
               'file_path': filepath,
               'blender_path': blender_path,
               'render_settings': render_settings,
               'start': job.chunk_start,
               'end': job.chunk_end,
               'repo_path': repo_path,
-              'server_repo_path': show.path_server, 
+              'server_repo_path': show.path_server,
               'rev': rev,
               'repo_type': repo_type}
 
@@ -137,10 +140,11 @@ def start_job(worker, job):
     #  get a reply from the worker (running, error, etc)
 
     job.status = 'running'
-    job.save()
+    #job.save()
 
     shot.current_frame = job.chunk_end
-    shot.save()
+    #shot.save()
+    session.flush()
 
     return 'Job started'
 
@@ -189,7 +193,7 @@ def start_job(worker, job):
 #               'render_settings': render_settings,
 #               'frames': ' '.join(frames),
 #               'repo_path': repo_path,
-#               'server_repo_path': show.path_server, 
+#               'server_repo_path': show.path_server,
 #               'rev': rev,
 #               'repo_type': repo_type,
 #               'shot_id': shot.id}
@@ -203,10 +207,9 @@ def dispatch_jobs(shot = None):
     if not shot:
         print("I don't know which of shot to run, please select one")
         return
-    for worker in Workers.select().where(
-        (Workers.status == 'enabled') & (Workers.connection == 'online')):
+    for worker in Workers.query.find({'status' : 'enabled', 'connection' : 'online'}).all():
 
-        frames_to_render = Frames.select().where((Frames.shot_id == shot.id) & (Frames.status == 'ready')).limit(shot.chunk_size)
+        frames_to_render = Frames.query.find({'shot_id' : shot._id, 'status' : 'ready'}).limit(shot.chunk_size).all()
         #frames_to_render = q.execute()
         print(shot.chunk_size)
         #print(frames_to_render.count())
@@ -214,12 +217,12 @@ def dispatch_jobs(shot = None):
         for f in frames_to_render:
             print(f.frame)
             f.status = 'running'
-            f.worker_id = worker.id
+            f.worker_id = worker._id
             frame_list.append(str(f.frame))
-        
+
         # save modifications to database
-        for f in frames_to_render:
-            f.save()
+        #for f in frames_to_render:
+        #    f.save()
 
         print ('frame_list=', frame_list)
 
@@ -230,6 +233,8 @@ def dispatch_jobs(shot = None):
             return
         else:
             render_frames(worker, shot, frame_list)
+
+        #session.flush()
 
         # # pick the job with the highest priority (it means the lowest number)
         # job = None # will figure out another way
@@ -254,17 +259,18 @@ def dispatch_jobs(shot = None):
 def delete_job(job_id):
     # At the moment this function is not used anywhere
     try:
-        job = Jobs.get(Jobs.id == job_id)
+        job = Jobs.query.find({'_id' : job_id}).first()
     except Exception, e:
         print(e)
         return 'error'
-    job.delete_instance()
+    job.delete()
     print('Deleted job', job_id)
+    #session.flush()
 
 
 def delete_jobs(shot_id):
-    delete_query = Jobs.delete().where(Jobs.shot_id == shot_id)
-    delete_query.execute()
+    delete_query = Jobs.query.remove({'shot_id' : shot_id})
+    #delete_query.execute()
     print('All jobs deleted for shot', shot_id)
 
 
@@ -272,19 +278,19 @@ def start_jobs(shot_id):
     """
     [DEPRECATED] We start all the jobs for a specific shot
     """
-    for job in Jobs.select().where(Jobs.shot_id == shot_id,
-                                   Jobs.status == 'ready'):
-        print(start_job(job.id))
+    for job in Jobs.query.find({'shot_id' : shot_id, 'status' : 'ready'}).all():
+        print(start_job(job._id))
 
 
 def stop_job(job_id):
     """
     Stop a single job
     """
-    job = Jobs.get(Jobs.id == job_id)
+    job = Jobs.query.find({'_id' : job_id}).first()
     job.status = 'ready'
-    job.save()
+    #job.save()
 
+    session.flush()
     return 'Job stopped'
 
 
@@ -292,9 +298,8 @@ def stop_jobs(shot_id):
     """
     We stop all the jobs for a specific shot
     """
-    for job in Jobs.select().where(Jobs.shot_id == shot_id,
-                                   Jobs.status == 'running'):
-        print(stop_job(job.id))
+    for job in Jobs.query.find({'shot_id' : shot_id, 'status' : 'running'}).all():
+        print(stop_job(job._id))
 
 
 @jobs_module.route('/jobs/')
@@ -302,10 +307,10 @@ def jobs():
     from decimal import Decimal
     jobs = {}
     percentage_done = 0
-    for job in Jobs.select():
+    for job in Jobs.query.find({}).all():
 
-        shot = Shots.get(Shots.id == job.shot_id)
-        show = Shows.get(Shows.id == shot.show_id)
+        shot = Shots.query.find({'_id' : job.shot_id}).first()
+        show = Shows.query.find({'_id' : shot.show_id}).first()
 
         parent = "%s/%s" % (show.name, shot.shot_name)
 
@@ -313,7 +318,7 @@ def jobs():
         current_frame = job.current_frame - job.chunk_start + 1
         percentage_done = Decimal(current_frame) / Decimal(frame_count) * Decimal(100)
         percentage_done = round(percentage_done, 1)
-        jobs[job.id] = {"shot_id": job.shot_id,
+        jobs[job._id.__str__()] = {"shot_id": job.shot_id.__str__(),
                         "chunk_start": job.chunk_start,
                         "chunk_end": job.chunk_end,
                         "current_frame": job.current_frame,
@@ -329,8 +334,8 @@ def jobs_update():
     job_id = request.form['id']
     status = request.form['status'].lower()
 
-    job = Jobs.get(Jobs.id == job_id)
-    shot = Shots.get(Shots.id == job.shot_id)
+    job = Jobs.query.find({'_id' : ObjectId(job_id)}).first()
+    shot = Shots.query.find({'_id' : job.shot_id}).first()
 
     full_output = request.form['full_output']
     retcode = request.form['retcode']
@@ -346,22 +351,23 @@ def jobs_update():
 
     if status in ['finished']:
         job.status = 'finished'
-        job.save()
+        #job.save()
         if job.chunk_end == shot.frame_end:
             shot.status = 'completed'
             # this can be added when we update the shot for every
             # frame rendered
             # if job.current_frame == shot.frame_end:
             #     shot.status = 'finished'
-            shot.save()
+            #shot.save()
     elif status in ['error']:
         shot.status = 'error'
-        shot.save()
+        #shot.save()
         job.status = 'error'
-        job.save()
+        #job.save()
     else:
         print('receiveed status is %s' % status)
 
+    session.flush()
     dispatch_jobs()
 
     return "job updated"

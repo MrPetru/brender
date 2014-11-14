@@ -21,6 +21,9 @@ def list_integers_string(string_list):
     integers_list = map(int, integers_list)
     return integers_list
 
+def stringToList(string_list):
+    return string_list.split(',')
+
 
 def frame_percentage(item):
     if item.frame_start == item.current_frame:

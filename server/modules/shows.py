@@ -5,8 +5,11 @@ from os import listdir
 from os.path import isfile, join, abspath, dirname
 from flask import Blueprint, render_template, abort, jsonify, request
 
-from model import *
+#from model import *
 from utils import *
+
+from mingmodel import session, Shows, Shots, Frames
+from bson import ObjectId
 
 shows_module = Blueprint('shows_module', __name__)
 
@@ -16,9 +19,9 @@ def shows():
     # Here we will add a check to see if we shoud get shows from the
     # local database or if we should query attract for them
     shows = {}
-    for show in Shows.select():
-        shows[show.id] = dict(
-            id=show.id,
+    for show in Shows.query.find({}).all():
+        shows[show._id.__str__()] = dict(
+            id=show._id.__str__(),
             name=show.name,
             path_server=show.path_server,
             path_linux=show.path_linux,
@@ -26,15 +29,15 @@ def shows():
             repo_type=show.repo_type,
             repo_update_cmd=show.repo_update_cmd,
             repo_checkout_cmd=show.repo_checkout_cmd)
-    
+
     return jsonify(shows)
 
 
-@shows_module.route('/shows/<int:show_id>')
+@shows_module.route('/shows/<show_id>')
 def get_show(show_id):
     try:
-        show = Shows.get(Shows.id == show_id)
-        print('[Debug] Get show %d') % (show.id)
+        show = Shows.query.find({'_id' : ObjectId(show_id)}).first()
+        print('[Debug] Get show %s') % (show._id.__str__())
     except Shows.DoesNotExist:
         print '[Error] Show not found'
         return 'Show %d not found' % show_id
@@ -59,31 +62,35 @@ def show_add():
     repo_update_cmd = request.form['repo_update_cmd']
     repo_checkout_cmd = request.form['repo_checkout_cmd']
 
-    show = Shows.create(
-        name=request.form['name'],
-        path_server=path_server,
-        path_linux=path_linux,
-        path_osx=path_osx,
-        repo_type=repo_type,
-        repo_update_cmd=repo_update_cmd,
-        repo_checkout_cmd=repo_checkout_cmd)
+    show = Shows()
+    show.name=request.form['name']
+    show.path_server=path_server
+    show.path_linux=path_linux
+    show.path_osx=path_osx
+    show.repo_type=repo_type
+    show.repo_update_cmd=repo_update_cmd
+    show.repo_checkout_cmd=repo_checkout_cmd
+
+    session.flush()
 
     return 'done'
 
 
-@shows_module.route('/shows/delete/<int:show_id>', methods=['GET', 'POST'])
+@shows_module.route('/shows/delete/<show_id>', methods=['GET', 'POST'])
 def shows_delete(show_id):
-    shots_show = Shots.select().where(Shots.show_id == show_id)
+    shots_show = Shots.query.find({'_id' : ObjectId(show_id)}).first()
     for shot_show in shots_show:
-        print '[Debug] Deleting shot (%s) for show %s ' % (shot_show.shot_name, shot_show.show_id)
-        jobs = Jobs.select().where(Jobs.shot_id == shot_show.id)
+        print '[Debug] Deleting shot (%s) for show %s ' % (shot_show.shot_name, shot_show.show_id.__str__())
+        jobs = Jobs.query.find({'shot_id' : shot_show._id}).all()
         for j in jobs:
-            j.delete_instance()
-        shot_show.delete_instance()
+            j.delete()
+        shot_show.delete()
 
-    show = Shows.get(Shows.id == show_id)
-    if show:
-      show.delete_instance()
+    show = Shows.query.remove({'_id' : ObjectId(show_id)})
+
+    session.flush()
+    #if show:
+    #  show.delete_instance()
     return 'done'
 
 
@@ -91,10 +98,13 @@ def shows_delete(show_id):
 def shows_update():
 
     try:
-        show = Shows.get(Shows.id == request.form['show_id'])
+        show = Shows.query.find({'_id' : ObjectId(request.form['show_id'])})
     except Shows.DoesNotExist:
         print '[Error] Show not found'
         return 'Show %d not found' % show_id
+
+    if not show:
+        return "Show not found"
 
     show.path_server=request.form['path_server']
     show.path_linux=request.form['path_linux']
@@ -104,7 +114,8 @@ def shows_update():
     show.repo_update_cmd=request.form['repo_update_cmd']
     show.repo_checkout_cmd=request.form['repo_checkout_cmd']
 
-    show.save()
+    #show.save()
+    session.flush()
     return 'done'
 
 
