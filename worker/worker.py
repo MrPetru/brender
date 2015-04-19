@@ -127,7 +127,7 @@ def info():
                    hostname=HOSTNAME,
                    system=SYSTEM)
 
-def handleMercurialRepo():
+def handleMercurialRepo(options):
     from mercurial import hg, ui, commands
     from mercurial.error import RepoError
 
@@ -142,6 +142,7 @@ def handleMercurialRepo():
             commands.clone(ui.ui(), source, dest=options['repo_path'].encode())
         repo = hg.repository(ui.ui(), options['repo_path'].encode())
 
+    retcode = 0
     if ssh_key_file:
         try:
             commands.pull(ui.ui(), repo, source=source, ssh="ssh -i %s" % ssh_key_file)
